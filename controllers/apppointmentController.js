@@ -260,7 +260,7 @@ const getAppointmentsByUserId = async (req, res) => {
       ],
       order: [
         ["status", "ASC"],
-        ["doctorSchedule", "date", "ASC"],
+        ["doctorSchedule", "date", "DESC"],
         [
           { model: AppointmentSlot, as: "appointmentSlot" },
           "start_time",
