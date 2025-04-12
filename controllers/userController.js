@@ -192,6 +192,85 @@ const createUserAccount = async (req, res) => {
     res.status(500).json({ message: "Có lỗi khi tạo tài khoản bệnh nhân" });
   }
 };
+
+const updateUserProfile = async (req, res) => {
+  try {
+    const {
+      fullname,
+      date_of_birth,
+      gender,
+      identity_card,
+      phone,
+      email,
+      address,
+    } = req.body;
+    console.log("req.body", req.body);
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    // Cập nhật dữ liệu
+    await user.update({
+      fullname,
+      date_of_birth,
+      gender,
+      identity_card,
+      phone,
+      email,
+      address,
+    });
+
+    res.status(200).json({ message: "Cập nhật thành công", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+const updateFamilyMember = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      fullname,
+      date_of_birth,
+      gender,
+      identity_card,
+      phone,
+      email,
+      address,
+    } = req.body;
+
+    // // Kiểm tra FamilyMember tồn tại và thuộc user
+    const familyMember = await FamilyMember.findOne({
+      where: { id, user_id: req.user.id, isDeleted: false },
+    });
+    console.log("familyMember", familyMember);
+    if (!familyMember) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thành viên gia đình" });
+    }
+
+    // Cập nhật dữ liệu
+    await familyMember.update({
+      fullname,
+      date_of_birth,
+      gender,
+      identity_card,
+      phone,
+      email,
+      address,
+    });
+
+    res.status(200).json({ message: "Cập nhật thành công", familyMember });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 module.exports = {
   createAccount,
   createProfile,
@@ -199,4 +278,6 @@ module.exports = {
   getInfoDoctor,
   getInfoUser,
   createUserAccount,
+  updateUserProfile,
+  updateFamilyMember,
 };

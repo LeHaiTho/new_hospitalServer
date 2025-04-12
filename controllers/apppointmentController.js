@@ -1301,6 +1301,58 @@ const cancelAppointment = async (req, res) => {
     console.log(error);
   }
 };
+
+// xóa hồ sơ người nhà bệnh nhân
+const deleteFamilyMember = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Bước 1: Kiểm tra xem FamilyMember có tồn tại và thuộc về người dùng không
+    const familyMember = await FamilyMember.findOne({
+      where: {
+        id,
+        user_id: req.user.id,
+        isDeleted: false,
+      },
+    });
+
+    // if (!familyMember) {
+    //   return res.status(404).json({
+    //     message: "Hồ sơ không tồn tại hoặc không thuộc về bạn",
+    //   });
+    // }
+
+    // Bước 2: Kiểm tra xem FamilyMember có lịch hẹn nào không
+    const hasAppointments = await Appointment.findOne({
+      where: {
+        familyMember_id: id,
+      },
+    });
+
+    if (hasAppointments) {
+      return res.status(409).json({
+        message: "Hồ sơ có lịch hẹn, không thể xóa",
+      });
+    }
+
+    // Bước 3: Thực hiện xóa mềm FamilyMember
+    await FamilyMember.update(
+      { isDeleted: true, updatedAt: new Date() },
+      { where: { id } }
+    );
+
+    res.status(200).json({
+      message: "Xóa hồ sơ thành công",
+    });
+  } catch (error) {
+    console.error("Error deleting FamilyMember:", error);
+    res.status(500).json({
+      message: "Lỗi khi xóa hồ sơ",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createAppointment,
   getAppointmentsByUserId,
@@ -1315,4 +1367,5 @@ module.exports = {
   cancelAppointment,
   getAppointmentByIdByHospital,
   updateAppointmentStatusAfterPayment,
+  deleteFamilyMember,
 };

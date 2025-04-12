@@ -45,7 +45,7 @@ const createPayment = async (req, res) => {
     description: `Thanh toán lịch hẹn #${transID}`,
     bank_code: "zalopayapp",
     callback_url:
-      "https://d37c-2405-4802-a5f6-8300-71b7-fe30-dac6-f739.ngrok-free.app/payments/callback",
+      "https://6e1a-2001-ee0-51f3-f730-35be-2dec-5893-6c2d.ngrok-free.app/payments/callback",
   };
 
   const data =

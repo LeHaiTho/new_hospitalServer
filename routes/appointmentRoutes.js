@@ -13,6 +13,7 @@ const {
   cancelAppointment,
   getAppointmentByIdByHospital,
   updateAppointmentStatusAfterPayment,
+  deleteFamilyMember,
 } = require("../controllers/apppointmentController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -54,4 +55,5 @@ router.patch(
   protect,
   updateAppointmentStatusAfterPayment
 );
+router.delete("/:id", protect, deleteFamilyMember);
 module.exports = router;
