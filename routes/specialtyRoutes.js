@@ -21,6 +21,8 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 // Đang làm sửa sau lỗi thì bật lên
 router.post("/create-new", upload.single("photo"), addSpecialty);
+router.put("/specialties/update/:id", upload.single("photo"), updateSpecialty);
+router.delete("/specialties/delete/:id", deleteSpecialty);
 
 router.post("/add-specialty-to-hospital", protect, addSpecialty);
 router.get("/list-by-hospital", getSpecialtyByHospitalId);

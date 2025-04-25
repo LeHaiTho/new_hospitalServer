@@ -300,6 +300,135 @@ const getAppointmentsByUserId = async (req, res) => {
     });
   }
 };
+// lấy lịch sử khám của bệnh viện
+const getHistoryBookingOfHospital = async (req, res) => {
+  const user = req.user;
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    doctorId,
+    startDate,
+    endDate,
+    status,
+  } = req.query;
+
+  try {
+    const hospital = await Hospital.findOne({
+      where: {
+        manager_id: user.id,
+      },
+    });
+
+    const where = {
+      hospital_id: hospital.id,
+      [Op.and]: [
+        doctorId ? { doctor_id: doctorId } : {},
+        startDate ? { appointment_date: { [Op.gte]: startDate } } : {},
+        endDate ? { appointment_date: { [Op.lte]: endDate } } : {},
+        status ? { status } : {},
+      ],
+    };
+
+    const searchCondition = search
+      ? {
+          [Op.or]: [
+            { "$user.fullname$": { [Op.iLike]: `%${search}%` } },
+            { "$doctor.user.fullname$": { [Op.iLike]: `%${search}%` } },
+          ],
+        }
+      : {};
+
+    const appointments = await Appointment.findAll({
+      where: {
+        ...where,
+        ...searchCondition,
+      },
+      attributes: [
+        "id",
+        "status",
+        "appointment_date",
+        "payment_method",
+        "reason_for_visit",
+        "price",
+      ],
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "fullname"],
+        },
+        {
+          model: FamilyMember,
+          as: "familyMembers",
+        },
+        {
+          model: AppointmentSlot,
+          as: "appointmentSlot",
+          attributes: ["id", "start_time", "end_time"],
+        },
+        {
+          model: DoctorSchedule,
+          as: "doctorSchedule",
+          attributes: ["date"],
+        },
+        {
+          model: Hospital,
+          as: "hospital",
+          attributes: ["id", "name", "address"],
+        },
+        {
+          model: Doctor,
+          as: "doctor",
+          attributes: ["id"],
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: ["id", "fullname"],
+            },
+          ],
+        },
+        {
+          model: Specialty,
+          as: "specialty",
+          attributes: ["id", "name"],
+        },
+      ],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+      order: [["appointment_date", "DESC"]],
+    });
+    const data = appointments?.map((appt) => {
+      return {
+        id: appt.id,
+        appointmentCode: appt.appointment_code,
+        patientName: appt.familyMembers?.fullname || appt.user?.fullname,
+        doctorName: appt.doctor?.user?.fullname,
+        specialty: appt.specialty?.name,
+        appointmentDate:
+          moment(appt.appointment_date).format("DD/MM/YYYY") +
+          " " +
+          appt.appointmentSlot.start_time +
+          " - " +
+          appt.appointmentSlot.end_time,
+        status: appt.status,
+        reasonForVisit: appt.reason_for_visit,
+        price: appt.price,
+      };
+    });
+    console.log(data);
+    res.status(200).json({
+      message: "Get history booking of hospital successfully",
+      data,
+      total: appointments.count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 // lấy chi tiết lịch hẹn theo id
 const getAppointmentById = async (req, res) => {
@@ -498,90 +627,6 @@ const getAppointmentByIdByHospital = async (req, res) => {
     console.log(error);
   }
 };
-// lịch hẹn đã hoàn thành theo id
-// const getAppointmentCompletedById = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     // Điều kiện lấy dữ liệu
-//     const whereCondition = {
-//       status: "completed",
-//     };
-
-//     if (id === String(req.user.id)) {
-//       // Lấy tất cả lịch hẹn đã hoàn thành của user chính
-//       whereCondition.user_id = req.user.id;
-//       whereCondition.familyMember_id = null;
-//     } else {
-//       // Lấy lịch hẹn đã hoàn thành theo memberID
-//       whereCondition.familyMember_id = id;
-//     }
-
-//     const appointment = await Appointment.findAll({
-//       where: whereCondition,
-//       include: [
-//         {
-//           model: User,
-//           as: "user",
-//           attributes: [
-//             "id",
-//             "fullname",
-//             "phone",
-//             "address",
-//             "avatar",
-//             "gender",
-//             "date_of_birth",
-//           ],
-//         },
-//         {
-//           model: FamilyMember,
-//           as: "familyMembers",
-//         },
-//         {
-//           model: AppointmentSlot,
-//           as: "appointmentSlot",
-//           attributes: ["id", "start_time", "end_time"],
-//         },
-//         {
-//           model: DoctorSchedule,
-//           as: "doctorSchedule",
-//           attributes: ["id", "date", "slot_duration"],
-//         },
-//         {
-//           model: Hospital,
-//           as: "hospital",
-//           attributes: ["id", "name", "address"],
-//         },
-//         {
-//           model: Doctor,
-//           as: "doctor",
-//           include: [
-//             {
-//               model: User,
-//               as: "user",
-//             },
-//           ],
-//         },
-//         {
-//           model: Specialty,
-//           as: "specialty",
-//           attributes: ["id", "name"],
-//         },
-//       ],
-//     });
-
-//     res.status(200).json({
-//       message: "Get appointment completed successfully",
-//       appointment,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching appointments:", error);
-//     res.status(500).json({
-//       message: "Error fetching appointments",
-//       error: error.message,
-//     });
-//   }
-// };
 
 const getAppointmentCompletedById = async (req, res) => {
   try {
@@ -964,118 +1009,6 @@ const getAppointmentNeedChange = async (req, res) => {
   }
 };
 
-// đề xuất lịch hẹn mới (khác bác sĩ + chuyên khoa + giá tiền + bệnh viện + giờ khám)
-// const suggestAppointment = async (req, res) => {
-//   const { appointmentNeedChange } = req.body;
-//   try {
-//     const originalAppointment = await Appointment.findOne({
-//       where: {
-//         id: appointmentNeedChange,
-//         status: "waiting",
-//       },
-//       include: [
-//         {
-//           model: Hospital,
-//           as: "hospital",
-//         },
-//         {
-//           model: Specialty,
-//           as: "specialty",
-//         },
-//         {
-//           model: Doctor,
-//           as: "doctor",
-//         },
-//         {
-//           model: DoctorSchedule,
-//           as: "doctorSchedule",
-//         },
-//         {
-//           model: AppointmentSlot,
-//           as: "appointmentSlot",
-//         },
-//       ],
-//     });
-
-//     // lấy thông tin bác sĩ khác cùng giờ khám
-//     const doctorsOfHospital = await DoctorHospital.findAll({
-//       where: {
-//         hospital_id: originalAppointment.hospital_id,
-//         doctor_id: {
-//           [Op.ne]: originalAppointment.doctor_id,
-//         },
-//       },
-//       include: [
-//         {
-//           model: Doctor,
-//           as: "doctor",
-//           include: [
-//             {
-//               model: User,
-//               as: "user",
-//             },
-//           ],
-//         },
-//       ],
-//     });
-//     const hospitalAndSpecial = await HospitalSpecialty.findOne({
-//       where: {
-//         hospital_id: originalAppointment.hospital_id,
-//         specialty_id: originalAppointment.specialty_id,
-//       },
-//     });
-//     // già khám của bác sĩ ban đầu
-//     const doctorFee = await DoctorSpecialty.findOne({
-//       where: {
-//         hospital_specialty_id: hospitalAndSpecial.id,
-//         doctor_id: originalAppointment.doctor_id,
-//       },
-//     });
-
-//     // lấy ra những bác sĩ cùng chuyên khoa và cùng giá khám
-//     const doctorWithSpecialtyOfHospital = await DoctorSpecialty.findAll({
-//       where: {
-//         hospital_specialty_id: hospitalAndSpecial.id,
-//         doctor_id: doctorsOfHospital.map((doctor) => doctor.doctor_id),
-//         consultation_fee: doctorFee.consultation_fee,
-//       },
-//     });
-//     // lấy ra những bác sĩ cùng ngày  khám
-//     const doctorScheduleDate = await DoctorSchedule.findAll({
-//       where: {
-//         date: originalAppointment.doctorSchedule.date,
-//         doctor_id: doctorWithSpecialtyOfHospital.map(
-//           (doctor) => doctor.doctor_id
-//         ),
-//       },
-//     });
-//     const appointmentSlot = await AppointmentSlot.findAll({
-//       where: {
-//         doctorSchedule_id: doctorScheduleDate.map((doctor) => doctor.id),
-//         isBooked: false,
-//         isDeleted: false,
-//         start_time: {
-//           [Op.gte]: originalAppointment.appointmentSlot.start_time,
-//         },
-//         end_time: {
-//           [Op.lte]: originalAppointment.appointmentSlot.end_time,
-//         },
-//       },
-//     });
-
-//     res.status(200).json({
-//       originalAppointment,
-//       doctorsOfHospital,
-//       hospitalAndSpecial,
-//       doctorFee,
-//       doctorWithSpecialtyOfHospital,
-//       doctorScheduleDate,
-//       appointmentSlot,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
 const suggestAppointment = async (req, res) => {
   const { appointmentNeedChange } = req.body;
 
@@ -1316,12 +1249,6 @@ const deleteFamilyMember = async (req, res) => {
       },
     });
 
-    // if (!familyMember) {
-    //   return res.status(404).json({
-    //     message: "Hồ sơ không tồn tại hoặc không thuộc về bạn",
-    //   });
-    // }
-
     // Bước 2: Kiểm tra xem FamilyMember có lịch hẹn nào không
     const hasAppointments = await Appointment.findOne({
       where: {
@@ -1368,4 +1295,5 @@ module.exports = {
   getAppointmentByIdByHospital,
   updateAppointmentStatusAfterPayment,
   deleteFamilyMember,
+  getHistoryBookingOfHospital,
 };

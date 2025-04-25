@@ -13,6 +13,7 @@ const searchByName = async (req, res) => {
         name: {
           [Op.iLike]: `%${text}%`,
         },
+        isActive: true,
       },
       attributes: ["id", "name", "address", "banner"],
     });

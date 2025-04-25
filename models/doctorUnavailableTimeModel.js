@@ -40,6 +40,10 @@ const DoctorUnavailableTime = sequelize.define(
     reason: {
       type: DataTypes.STRING,
     },
+    reason_reject: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
     },

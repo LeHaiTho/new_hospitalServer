@@ -811,7 +811,7 @@ const createDoctorSchedule2 = async (req, res) => {
           end_time: end,
           shift_type,
           slot_duration: slotDuration,
-          room_id: room,
+          // room_id: room,
         }).then((createdSchedule) => {
           const startTime = moment(start, "HH:mm:ss");
           const endTime = moment(end, "HH:mm:ss");

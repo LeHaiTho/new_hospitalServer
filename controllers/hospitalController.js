@@ -19,6 +19,8 @@ const { Json } = require("sequelize/lib/utils");
 const moment = require("moment");
 const HospitalShift = require("../models/hospitalShiftModel");
 const Room = require("../models/roomModel");
+
+// Thêm mới bệnh viện + tài khoản quản lý
 const createHospital = async (req, res) => {
   const t = await sequelize.transaction();
   const { name, email } = req.body;
@@ -131,12 +133,38 @@ const getListHospital = async (req, res) => {
         {
           model: User,
           as: "manager",
-          attributes: ["username"],
+          attributes: { exclude: ["password"] },
         },
       ],
     });
     res.status(200).json({ hospitals });
   } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
+
+// API test lấy danh sách bệnh viện cho mobile
+const getListHospitalForMobile = async (req, res) => {
+  try {
+    const hospitals = await Hospital.findAll({
+      include: [
+        {
+          model: User,
+          as: "manager",
+          attributes: { exclude: ["password"] },
+          where: {
+            isActivated: true,
+            isDeleted: false,
+            isFirstLogin: false,
+          },
+        },
+      ],
+    });
+    res.status(200).json({ hospitals });
+  } catch (error) {
+    console.log(error);
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
@@ -457,6 +485,92 @@ const createRoom = async (req, res) => {
     console.log(err);
   }
 };
+
+// Vô hiệu hóa bệnh viện / tài khoản manager /bác sĩ / lịch khám
+// const disableHospital = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const hospital = await Hospital.findByPk(id);
+//     hospital.isActive = false;
+//     await hospital.save();
+//     const manager = await User.findByPk(hospital?.manager_id);
+//     manager.isActivated = false;
+//     await manager.save();
+//     const doctorHospital = await DoctorHospital.findAll({
+//       where: {
+//         hospital_id: id,
+//       },
+//     });
+//     for (const doctor of doctorHospital) {
+//       doctor.is_active = false;
+//       await doctor.save();
+//       const doctorUser = await Doctor.findByPk(doctor?.doctor_id);
+//       doctorUser.isActivated = false;
+//       await doctorUser.save();
+//       const doctorUser2 = await User.findByPk(doctorUser?.user_id);
+//       doctorUser2.isActivated = false;
+//       await doctorUser2.save();
+//     }
+
+//     res.status(200).json({ message: "Bệnh viện đã được vô hiệu hóa" });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Internal server error", error: error.message });
+//   }
+// };
+
+const disableHospital = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body; // true hoặc false
+
+    const hospital = await Hospital.findByPk(id);
+    if (!hospital) {
+      return res.status(404).json({ message: "Không tìm thấy bệnh viện" });
+    }
+
+    hospital.isActive = isActive;
+    await hospital.save();
+
+    const manager = await User.findByPk(hospital.manager_id);
+    if (manager) {
+      manager.isActivated = isActive;
+      await manager.save();
+    }
+
+    const doctorHospital = await DoctorHospital.findAll({
+      where: { hospital_id: id },
+    });
+
+    for (const doctor of doctorHospital) {
+      doctor.is_active = isActive;
+      await doctor.save();
+
+      const doctorUser = await Doctor.findByPk(doctor.doctor_id);
+      if (doctorUser) {
+        doctorUser.isActivated = isActive;
+        await doctorUser.save();
+
+        const user = await User.findByPk(doctorUser.user_id);
+        if (user) {
+          user.isActivated = isActive;
+          await user.save();
+        }
+      }
+    }
+
+    res.status(200).json({
+      message: `Bệnh viện đã được ${isActive ? "kích hoạt" : "vô hiệu hóa"}`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createHospital,
   getHospital_shiftTyes,
@@ -469,4 +583,6 @@ module.exports = {
   getHospitalConditions,
   createRoom,
   getRooms,
+  getListHospitalForMobile,
+  disableHospital,
 };

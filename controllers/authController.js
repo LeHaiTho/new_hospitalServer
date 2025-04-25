@@ -18,6 +18,11 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "Tên đăng nhập không tồn tại" });
     }
+    if (user.isActivated === false && user.isFirstLogin === false) {
+      return res.status(401).json({
+        message: "Tài khoản đã bị khóa",
+      });
+    }
 
     const isPasswordValid = await byscript.compare(password, user.password);
     if (!isPasswordValid) {
@@ -177,15 +182,19 @@ const registerPatient = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
+
 const registerNewPatient = async (req, res) => {
   const { username, password, fullname } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    const role = await Role.findOne({
+      where: { name: "customer" },
+    });
     const newUser = await User.create({
       username,
       password: hashedPassword,
-      role_id: 6,
+      role_id: role.id,
       isFirstLogin: false,
       isActivated: true,
       fullname,
@@ -249,8 +258,8 @@ const registerStaff = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
-// google sign in
 
+// google sign in
 const googleSignIn = async (req, res) => {
   const { name, email, photo, familyName, givenName } = req.body;
   try {
@@ -258,9 +267,16 @@ const googleSignIn = async (req, res) => {
       where: { email },
       include: { model: Role, as: "role", attributes: ["name"] }, // Include the role in the response
     });
+    const role = await Role.findOne({
+      where: { name: "customer" },
+    });
+    // console.log(role);
+    if (user?.isActivated === false) {
+      return res.status(404).json({ message: "Tài khoản đã bị khóa" });
+    }
     if (!user) {
       user = await User.create({
-        role_id: 6,
+        role_id: role.id,
         isFirstLogin: false,
         isActivated: true,
         email,
@@ -273,7 +289,7 @@ const googleSignIn = async (req, res) => {
       // display_name: name,
       username: user.username,
       email: user.email,
-      role: user.role.name,
+      role: user.role?.name,
       fullname: user.fullname,
       phone: user.phone,
       address: user.address,
@@ -282,7 +298,7 @@ const googleSignIn = async (req, res) => {
       avatar: user.avatar,
     };
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+      expiresIn: "30d",
     });
     return res.status(200).json({
       message: "Đăng nhập thành công",

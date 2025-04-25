@@ -14,6 +14,7 @@ const {
   getAppointmentByIdByHospital,
   updateAppointmentStatusAfterPayment,
   deleteFamilyMember,
+  getHistoryBookingOfHospital,
 } = require("../controllers/apppointmentController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -37,6 +38,12 @@ router.patch(
   protect,
   restrictTo("staff"),
   updateAppointmentStatusById
+);
+router.get(
+  "/get-history-booking",
+  protect,
+  restrictTo("manager"),
+  getHistoryBookingOfHospital
 );
 router.get("/get-appointment-by-id/:id", protect, getAppointmentById);
 // router.get("/get-appointment-by-id/:id", getAppointmentById);

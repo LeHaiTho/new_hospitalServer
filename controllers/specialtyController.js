@@ -44,6 +44,72 @@ const addSpecialty = async (req, res) => {
   }
 };
 
+const updateSpecialty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const file = req.file;
+
+    // Tìm chuyên khoa theo ID
+    const specialty = await Specialty.findByPk(id);
+    if (!specialty) {
+      return res.status(404).json({ message: "Chuyên khoa không tồn tại" });
+    }
+
+    // Kiểm tra tên chuyên khoa đã tồn tại (trừ chính nó)
+    if (name && name !== specialty.name) {
+      const existingSpecialty = await Specialty.findOne({ where: { name } });
+      if (existingSpecialty) {
+        return res.status(400).json({ message: "Tên chuyên khoa đã tồn tại" });
+      }
+    }
+
+    // Cập nhật dữ liệu
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (description) updateData.description = description;
+    if (name) updateData.slug = slugify(name, { lower: true, strict: true });
+    if (file) updateData.photo = `/uploads/${file.filename}`;
+
+    await specialty.update(updateData);
+
+    res.json({ updatedSpecialty: specialty });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật chuyên khoa" });
+  }
+};
+// Delete chuyên khoa của hệ thống
+const deleteSpecialty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Tìm chuyên khoa
+    const specialty = await Specialty.findByPk(id);
+    if (!specialty) {
+      return res.status(404).json({ message: "Chuyên khoa không tồn tại" });
+    }
+
+    // Kiểm tra liên kết với HospitalSpecialty
+    const hospitalSpecialty = await HospitalSpecialty.findOne({
+      where: { specialtyId: id },
+    });
+    if (hospitalSpecialty) {
+      return res.status(400).json({
+        message: "Không thể xóa chuyên khoa vì đã có liên kết với cơ sở y tế",
+      });
+    }
+
+    // Xóa chuyên khoa
+    await specialty.destroy();
+
+    res.json({ message: "Xóa chuyên khoa thành công" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi khi xóa chuyên khoa" });
+  }
+};
+
 const getListSpecialty = async (req, res) => {
   try {
     const { name } = req.query;
@@ -76,50 +142,51 @@ const getListSpecialtyOnlyIdAndName = async (req, res) => {
   }
 };
 
-const updateSpecialty = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description } = req.body;
-    const file = req.file;
-    const specialty = await Specialty.findByPk(id);
-    if (!specialty) {
-      return res
-        .status(404)
-        .json({ message: "Vui lòng chọn chuyên khoa để thay đổi!" });
-    }
+// const updateSpecialty = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { name, description } = req.body;
+//     const file = req.file;
+//     const specialty = await Specialty.findByPk(id);
+//     if (!specialty) {
+//       return res
+//         .status(404)
+//         .json({ message: "Vui lòng chọn chuyên khoa để thay đổi!" });
+//     }
 
-    const slug = slugify(name, { lower: true, strict: true });
-    let photoUrl = specialty.photo;
-    if (file) {
-      photoUrl = `/uploads/${file.filename}`;
-    }
-    const updatedSpecialty = await specialty.update({
-      name,
-      photo: photoUrl,
-      description,
-      slug,
-    });
-    res.status(200).json({ updatedSpecialty });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed to update specialty" });
-  }
-};
+//     const slug = slugify(name, { lower: true, strict: true });
+//     let photoUrl = specialty.photo;
+//     if (file) {
+//       photoUrl = `/uploads/${file.filename}`;
+//     }
+//     const updatedSpecialty = await specialty.update({
+//       name,
+//       photo: photoUrl,
+//       description,
+//       slug,
+//     });
+//     res.status(200).json({ updatedSpecialty });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ message: "Failed to update specialty" });
+//   }
+// };
 
-const deleteSpecialty = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const specialty = await Specialty.findByPk(id);
-    if (!specialty) {
-      return res.status(404).json({ message: "Specialty not found" });
-    }
-    await specialty.destroy();
-    res.status(200).json({ message: "Specialty deleted successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed to delete specialty" });
-  }
-};
+// comment đêm
+// const deleteSpecialty = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const specialty = await Specialty.findByPk(id);
+//     if (!specialty) {
+//       return res.status(404).json({ message: "Specialty not found" });
+//     }
+//     await specialty.destroy();
+//     res.status(200).json({ message: "Specialty deleted successfully" });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ message: "Failed to delete specialty" });
+//   }
+// };
 // Lấy chuyên khoa theo id để lấy danh sách bác sĩ và bệnh viện
 const getSpecialtyIdFilterList = async (req, res) => {
   const { specialtyId } = req.params;
@@ -234,7 +301,12 @@ const getSpecialtyByHospitalId = async (req, res) => {
   const { hospitalId } = req.query;
   try {
     const specialties = await HospitalSpecialty.findAll({
-      where: { hospital_id: hospitalId },
+      where: {
+        hospital_id: hospitalId,
+        name: { [Op.not]: null },
+        description: { [Op.not]: null },
+        consultation_fee: { [Op.not]: null },
+      },
       include: [
         {
           model: Specialty,

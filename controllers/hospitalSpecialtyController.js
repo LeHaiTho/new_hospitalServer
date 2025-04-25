@@ -131,7 +131,7 @@ const getListSpecialtyOfHospital = async (req, res) => {
       where: {
         id: arraySpecialtyId,
       },
-      attributes: ["id", "name"],
+      attributes: ["id", "name", "photo"],
     });
     res.status(200).json({ specialtiesOfSystem });
   } catch (error) {

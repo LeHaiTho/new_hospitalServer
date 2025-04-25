@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize("hospital_db", "postgres", "postgres", {
+const sequelize = new Sequelize("hospital_test", "postgres", "postgres", {
   host: "localhost",
   dialect: "postgres",
   port: 5432,

@@ -2,6 +2,7 @@ const sequelize = require("../config/database");
 const { DoctorSpecialty, DoctorHospital } = require("../models");
 const Doctor = require("../models/doctorModel");
 const User = require("../models/userModel");
+const Role = require("../models/roleModel");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { HospitalSpecialty, Hospital, Specialty, Rating } = require("../models");
@@ -39,6 +40,11 @@ const createDoctor = async (req, res) => {
     // Nếu bác sĩ chưa tồn tại, tạo tài khoản và thông tin bác sĩ mới
     if (!doctor) {
       const hashedPassword = await bcrypt.hash(email, 10);
+      const role = await Role.findOne({
+        where: {
+          name: "doctor",
+        },
+      });
       const newAccount = await User.create(
         {
           username: email,
@@ -46,12 +52,12 @@ const createDoctor = async (req, res) => {
           email,
           phone,
           password: hashedPassword,
-          role_id: 3, // Giả sử 3 là role bác sĩ
-          isActive: true,
+          role_id: role.id,
           avatar: imageUrl,
           gender,
           date_of_birth: birthday,
           isFirstLogin: false,
+          isActivated: true,
         },
         { transaction: t }
       );
@@ -117,6 +123,126 @@ const createDoctor = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.log(error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// server/controllers/doctorController.js
+const updateDoctor1 = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const {
+      licenseCode,
+      fullname,
+      email,
+      phone,
+      description,
+      specialty,
+      gender,
+      birthday,
+      consultation_fee,
+    } = req.body;
+    const file = req.file || null;
+    const imageUrl = file ? `/Uploads/${file.filename}` : undefined;
+
+    // Tìm bác sĩ
+    const doctor = await Doctor.findOne({
+      where: { id },
+      include: [{ model: User, as: "user" }],
+      transaction: t,
+    });
+
+    if (!doctor) {
+      await t.rollback();
+      return res.status(404).json({ message: "Bác sĩ không tồn tại" });
+    }
+
+    // Cập nhật thông tin User
+    await User.update(
+      {
+        fullname,
+        email,
+        phone,
+        gender,
+        date_of_birth: birthday,
+        avatar: imageUrl !== undefined ? imageUrl : doctor.user.avatar,
+      },
+      { where: { id: doctor.user_id }, transaction: t }
+    );
+
+    // Cập nhật thông tin Doctor
+    await Doctor.update(
+      {
+        description,
+        certificate_id: licenseCode,
+      },
+      { where: { id }, transaction: t }
+    );
+
+    // Bệnh viện hiện tại
+    const hospital = await Hospital.findOne({
+      where: { manager_id: req.user.id },
+      transaction: t,
+    });
+
+    // Kiểm tra quan hệ DoctorHospital
+    const existingDoctorHospital = await DoctorHospital.findOne({
+      where: { doctor_id: doctor.id, hospital_id: hospital.id },
+      transaction: t,
+    });
+
+    if (!existingDoctorHospital) {
+      await DoctorHospital.create(
+        {
+          doctor_id: doctor.id,
+          hospital_id: hospital.id,
+        },
+        { transaction: t }
+      );
+    }
+
+    // Cập nhật chuyên khoa
+    const specialtyIds = specialty.split(",").map((id) => parseInt(id));
+    // Xóa các chuyên khoa cũ của bác sĩ tại bệnh viện này
+    await DoctorSpecialty.destroy({
+      where: {
+        doctor_id: doctor.id,
+        hospital_specialty_id: {
+          [Op.in]: (
+            await HospitalSpecialty.findAll({
+              where: { hospital_id: hospital.id },
+              attributes: ["id"],
+              transaction: t,
+            })
+          ).map((hs) => hs.id),
+        },
+      },
+      transaction: t,
+    });
+
+    // Thêm chuyên khoa mới
+    const hospitalSpecialties = await HospitalSpecialty.findAll({
+      where: { specialty_id: specialtyIds, hospital_id: hospital.id },
+      transaction: t,
+    });
+
+    for (const hospitalSpecialty of hospitalSpecialties) {
+      await DoctorSpecialty.create(
+        {
+          doctor_id: doctor.id,
+          hospital_specialty_id: hospitalSpecialty.id,
+          consultation_fee,
+        },
+        { transaction: t }
+      );
+    }
+
+    await t.commit();
+    return res.status(200).json({ message: "Cập nhật bác sĩ thành công" });
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating doctor:", error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -291,7 +417,7 @@ const getAllDoctor = async (req, res) => {
 
     // Truy vấn danh sách bác sĩ
     const doctors = await Doctor.findAll({
-      where: whereCondition,
+      where: { ...whereCondition },
       attributes: {
         include: [
           [
@@ -306,6 +432,7 @@ const getAllDoctor = async (req, res) => {
       include: [
         {
           model: User,
+          where: { isActivated: true },
           as: "user",
           attributes: ["fullname", "email", "avatar"], // Chỉ lấy các trường cần thiết
         },
@@ -463,100 +590,330 @@ const filterDoctor = async (req, res) => {
 
 // danh sách bác sĩ thuộc bệnh viện
 const getDoctorOfHospital = async (req, res) => {
-  const hospital = await Hospital.findOne({
-    where: {
-      manager_id: req.user.id,
-    },
-  });
-
-  const doctorHospital = await DoctorHospital.findAll({
-    where: {
-      hospital_id: hospital.id,
-    },
-    include: [
-      {
-        model: Doctor,
-        as: "doctor",
-        attributes: ["id", "description", "user_id", "certificate_id"],
-        include: [
-          {
-            model: User,
-            as: "user",
-            attributes: [
-              "id",
-              "fullname",
-              "email",
-              "phone",
-              "avatar",
-              "gender",
-              "date_of_birth",
-            ],
-          },
-          {
-            model: DoctorHospital,
-            as: "doctorHospital",
-            where: {
-              hospital_id: hospital.id,
-            },
-          },
-          {
-            model: DoctorSpecialty,
-            as: "doctorSpecialty",
-            attributes: ["id", "hospital_specialty_id", "consultation_fee"],
-            include: [
-              {
-                model: HospitalSpecialty,
-                as: "hospitalSpecialty",
-                attributes: ["specialty_id"],
-                where: {
-                  hospital_id: hospital.id,
-                },
-                include: [
-                  {
-                    model: Specialty,
-                    as: "specialty",
-                    attributes: ["id", "name"],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
+  try {
+    const hospital = await Hospital.findOne({
+      where: {
+        manager_id: req.user.id,
       },
-    ],
-  });
-  const doctorList = doctorHospital.map((item) => ({
-    id: item.doctor.id,
-    avatar: item.doctor.user.avatar,
-    fullname: item.doctor.user.fullname,
-    email: item.doctor.user.email,
-    phone: item.doctor.user.phone,
-    description: item.doctor.description,
-    gender: item.doctor.user.gender,
-    birthday: item.doctor.user.date_of_birth,
-    licenseCode: item.doctor.certificate_id,
-    consultation_fee: item.doctor.doctorSpecialty.map(
-      (specialty) => specialty.consultation_fee
-    ),
-    // specialties: item.doctor.doctorSpecialty.map((specialty) => ({
-    //   id: specialty.hospitalSpecialty.specialty_id,
-    //   name: specialty.hospitalSpecialty.specialty.name,
-    // })),
-    // lọc chuyên khoa duy nhất
-    specialties: Array.from(
-      new Map(
-        item.doctor.doctorSpecialty.map((specialty) => [
-          specialty.hospitalSpecialty.specialty_id,
-          {
-            id: specialty.hospitalSpecialty.specialty_id,
-            name: specialty.hospitalSpecialty.specialty.name,
-          },
-        ])
-      ).values()
-    ),
-    isActive: item.doctor.doctorHospital[0].is_active,
-  }));
-  res.status(200).json({ doctorList });
+    });
+    if (!hospital) {
+      return res.status(404).json({ message: "Hospital not found" });
+    }
+
+    const doctorHospital = await DoctorHospital.findAll({
+      where: {
+        hospital_id: hospital?.id,
+      },
+      include: [
+        {
+          model: Doctor,
+          as: "doctor",
+          attributes: ["id", "description", "user_id", "certificate_id"],
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: { exclude: ["password"] },
+            },
+            {
+              model: DoctorHospital,
+              as: "doctorHospital",
+              where: {
+                hospital_id: hospital.id,
+              },
+            },
+            {
+              model: DoctorSpecialty,
+              as: "doctorSpecialty",
+              attributes: ["id", "hospital_specialty_id", "consultation_fee"],
+              include: [
+                {
+                  model: HospitalSpecialty,
+                  as: "hospitalSpecialty",
+                  attributes: ["specialty_id"],
+                  where: {
+                    hospital_id: hospital.id,
+                  },
+                  include: [
+                    {
+                      model: Specialty,
+                      as: "specialty",
+                      attributes: ["id", "name"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const doctorList = doctorHospital.map((item) => ({
+      id: item.doctor.id,
+      avatar: item.doctor.user.avatar,
+      fullname: item.doctor.user.fullname,
+      email: item.doctor.user.email,
+      phone: item.doctor.user.phone,
+      description: item.doctor.description,
+      gender: item.doctor.user.gender,
+      birthday: item.doctor.user.date_of_birth,
+      licenseCode: item.doctor.certificate_id,
+      consultation_fee: item.doctor.doctorSpecialty.map(
+        (specialty) => specialty.consultation_fee
+      ),
+      // specialties: item.doctor.doctorSpecialty.map((specialty) => ({
+      //   id: specialty.hospitalSpecialty.specialty_id,
+      //   name: specialty.hospitalSpecialty.specialty.name,
+      // })),
+      // lọc chuyên khoa duy nhất
+      specialties: Array.from(
+        new Map(
+          item.doctor.doctorSpecialty.map((specialty) => [
+            specialty.hospitalSpecialty.specialty_id,
+            {
+              id: specialty.hospitalSpecialty.specialty_id,
+              name: specialty.hospitalSpecialty.specialty.name,
+            },
+          ])
+        ).values()
+      ),
+      // isActivated: item.doctor.doctorHospital[0].is_active, // với doctor nhiều bệnh viện
+      isDeleted: item.doctor.user.isDeleted,
+      isActivated: item.doctor.user.isActivated,
+      // với doctor 1 bệnh viện
+    }));
+    res.status(200).json({ doctorList });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// lấy danh sách bác sĩ từ admin
+// const getAllDoctorAdmin = async (req, res) => {
+//   try {
+//     // Lấy tất cả bác sĩ từ tất cả bệnh viện
+//     const doctorHospitals = await DoctorHospital.findAll({
+//       include: [
+//         {
+//           model: Doctor,
+//           as: "doctor",
+//           attributes: ["id", "description", "user_id", "certificate_id"],
+//           include: [
+//             {
+//               model: User,
+//               as: "user",
+//               attributes: [
+//                 "id",
+//                 "fullname",
+//                 "email",
+//                 "phone",
+//                 "avatar",
+//                 "gender",
+//                 "date_of_birth",
+//               ],
+//             },
+//             {
+//               model: DoctorHospital,
+//               as: "doctorHospital",
+//               attributes: ["is_active", "hospital_id"],
+//               include: [
+//                 {
+//                   model: Hospital,
+//                   as: "hospital",
+//                   attributes: ["id", "name"], // Lấy thêm thông tin bệnh viện
+//                 },
+//               ],
+//             },
+//             {
+//               model: DoctorSpecialty,
+//               as: "doctorSpecialty",
+//               attributes: ["id", "hospital_specialty_id", "consultation_fee"],
+//               include: [
+//                 {
+//                   model: HospitalSpecialty,
+//                   as: "hospitalSpecialty",
+//                   attributes: ["specialty_id"],
+//                   include: [
+//                     {
+//                       model: Specialty,
+//                       as: "specialty",
+//                       attributes: ["id", "name"],
+//                     },
+//                   ],
+//                 },
+//               ],
+//             },
+//           ],
+//         },
+//       ],
+//     });
+
+//     // Chuyển đổi dữ liệu thành định dạng mong muốn
+//     const doctorList = doctorHospitals.map((item) => ({
+//       id: item.doctor.id,
+//       avatar: item.doctor.user.avatar,
+//       fullname: item.doctor.user.fullname,
+//       email: item.doctor.user.email,
+//       phone: item.doctor.user.phone,
+//       description: item.doctor.description,
+//       gender: item.doctor.user.gender,
+//       birthday: item.doctor.user.date_of_birth,
+//       licenseCode: item.doctor.certificate_id,
+//       consultation_fee: item.doctor.doctorSpecialty.map(
+//         (specialty) => specialty.consultation_fee
+//       ),
+//       specialties: Array.from(
+//         new Map(
+//           item.doctor.doctorSpecialty.map((specialty) => [
+//             specialty.hospitalSpecialty.specialty_id,
+//             {
+//               id: specialty.hospitalSpecialty.specialty_id,
+//               name: specialty.hospitalSpecialty.specialty.name,
+//             },
+//           ])
+//         ).values()
+//       ),
+//       isActive: item.doctor.doctorHospital[0].is_active,
+//       hospital: {
+//         id: item.doctor.doctorHospital[0].hospital.id,
+//         name: item.doctor.doctorHospital[0].hospital.name,
+//       }, // Thêm thông tin bệnh viện
+//     }));
+
+//     res.status(200).json({ doctorList });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+const { Op } = require("sequelize");
+
+const getAllDoctorAdmin = async (req, res) => {
+  try {
+    // Lấy tham số page, limit và search từ query
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const search = req.query.search || "";
+
+    // Điều kiện tìm kiếm
+    const where = search
+      ? {
+          [Op.or]: [
+            { "$user.fullname$": { [Op.iLike]: `%${search}%` } },
+            { "$user.email$": { [Op.iLike]: `%${search}%` } },
+            { "$user.phone$": { [Op.iLike]: `%${search}%` } },
+          ],
+        }
+      : {};
+
+    // Lấy tất cả bác sĩ với phân trang và tìm kiếm
+    const { count, rows: doctors } = await Doctor.findAndCountAll({
+      where,
+      limit,
+      offset,
+      distinct: true, // Đảm bảo không đếm trùng bác sĩ
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "fullname",
+            "email",
+            "phone",
+            "avatar",
+            "gender",
+            "date_of_birth",
+          ],
+          required: true,
+        },
+        {
+          model: DoctorHospital,
+          as: "doctorHospital",
+          attributes: ["is_active", "hospital_id", "isDeleted"],
+          include: [
+            {
+              model: Hospital,
+              as: "hospital",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+        {
+          model: DoctorSpecialty,
+          as: "doctorSpecialty",
+          attributes: ["id", "hospital_specialty_id", "consultation_fee"],
+          include: [
+            {
+              model: HospitalSpecialty,
+              as: "hospitalSpecialty",
+              attributes: ["specialty_id"],
+              include: [
+                {
+                  model: Specialty,
+                  as: "specialty",
+                  attributes: ["id", "name"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    // Chuyển đổi dữ liệu thành định dạng mong muốn
+    const doctorList = doctors.map((doctor) => ({
+      id: doctor.id,
+      avatar: doctor.user.avatar,
+      fullname: doctor.user.fullname,
+      email: doctor.user.email,
+      phone: doctor.user.phone,
+      description: doctor.description,
+      gender: doctor.user.gender,
+      birthday: doctor.user.date_of_birth,
+      licenseCode: doctor.certificate_id,
+      consultation_fee: doctor.doctorSpecialty.map(
+        (specialty) => specialty.consultation_fee
+      ),
+      specialties: Array.from(
+        new Map(
+          doctor.doctorSpecialty.map((specialty) => [
+            specialty.hospitalSpecialty.specialty_id,
+            {
+              id: specialty.hospitalSpecialty.specialty_id,
+              name: specialty.hospitalSpecialty.specialty.name,
+            },
+          ])
+        ).values()
+      ),
+
+      isDeleted: doctor.doctorHospital[0]?.isDeleted,
+      isActive: doctor.doctorHospital[0]?.is_active ?? false,
+      hospital: doctor.doctorHospital[0]?.hospital
+        ? {
+            id: doctor.doctorHospital[0].hospital.id,
+            name: doctor.doctorHospital[0].hospital.name,
+          }
+        : null,
+    }));
+
+    // Tính tổng số trang
+    const totalPages = Math.ceil(count / limit);
+
+    res.status(200).json({
+      doctorList,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: count,
+        limit,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
 };
 
 // lấy danh sách tên bác sĩ
@@ -854,5 +1211,7 @@ module.exports = {
   getDoctorById,
   getDoctorByLicenseCode,
   getAllDoctorOnline,
+  getAllDoctorAdmin,
+  updateDoctor1,
   // createDoctor2,
 };

@@ -5,6 +5,8 @@ const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { sendEmail } = require("../services/emailService");
+const { BOOLEAN } = require("sequelize");
+const { Op } = require("sequelize");
 
 const createAccount = async (req, res) => {
   const { username, roleName } = req.body;
@@ -139,7 +141,7 @@ const getAllProfileOfUser = async (req, res) => {
       },
     });
     const getMembersOfUser = await FamilyMember.findAll({
-      where: { user_id: req.user.id },
+      where: { user_id: req.user.id, isDeleted: false },
     });
     res.status(200).json({ profile, getMembersOfUser });
   } catch (error) {
@@ -271,6 +273,205 @@ const updateFamilyMember = async (req, res) => {
   }
 };
 
+// ADMIN
+const getUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search } = req.query;
+
+    const where = {
+      ...(search && {
+        [Op.or]: [
+          { fullname: { [Op.iLike]: `%${search}%` } },
+          { email: { [Op.iLike]: `%${search}%` } },
+        ],
+      }),
+    };
+
+    const role = await Role.findOne({
+      where: { name: "customer" },
+    });
+
+    const users = await User.findAndCountAll({
+      where: { ...where, role_id: role.id },
+      attributes: [
+        "id",
+        "fullname",
+        "username",
+        "email",
+        "phone",
+        "role_id",
+        "isActivated",
+        "createdAt",
+        "isDeleted",
+      ],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({
+      message: "Get users successfully",
+      data: users.rows,
+      total: users.count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to get users", error: error.message });
+  }
+};
+
+const getUserById = async (req, res) => {
+  try {
+    const userInstance = await User.findOne({
+      where: { id: req.params.id },
+      attributes: [
+        "id",
+        "fullname",
+        "username",
+        "email",
+        "phone",
+        "role_id",
+        "address",
+        "gender",
+        "date_of_birth",
+        "province",
+        "district",
+        "ward",
+        "isActivated",
+      ],
+    });
+    if (!userInstance) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userInstance.get({ plain: true });
+
+    const role = await Role.findOne({
+      where: { id: user.role_id },
+      attributes: ["name"],
+    });
+
+    delete user.role_id;
+
+    const userData = {
+      ...user,
+      role: role.name,
+    };
+    res.status(200).json({ message: "Get user successfully", data: userData });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to get user", error: error.message });
+  }
+};
+
+const createUser = async (req, res) => {
+  const { ...userData } = req.body;
+
+  try {
+    const existingUser = await User.findOne({
+      where: { email: userData.email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const role = await Role.findOne({
+      where: { name: "customer" },
+    });
+
+    const hashedPassword = await bcrypt.hash(userData.email, 10);
+    const user = await User.create({
+      ...userData,
+      password: hashedPassword,
+      username: userData.email,
+      role_id: role.id,
+      isDeleted: false,
+      isActivated: userData.isActivated,
+      isFirstLogin: false,
+    });
+    res.status(201).json({ message: "User created successfully", data: user });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to create user", error: error.message });
+  }
+};
+
+const lockUser = async (req, res) => {
+  try {
+    const { isActivated, isDeleted } = req.body;
+    const user = await User.findOne({ where: { id: req.params.id } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    await user.update({ isActivated, isDeleted });
+
+    res.status(200).json({
+      message: "User lock status updated successfully",
+      // data: userResponse,
+    });
+    console.log(req.params.id);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Failed to update user lock status",
+      error: error.message,
+    });
+  }
+};
+
+const updateUser = async (req, res) => {
+  const { ...userData } = req.body;
+  try {
+    const user = await User.findOne({
+      where: { id: req.params.id },
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    await user.update({
+      fullname: userData.fullname,
+      email: userData.email,
+      phone: userData.phone,
+      address: userData.address,
+    });
+    res.status(200).json({ message: "User updated successfully", data: user });
+
+    // const userResponse = {
+    //   id: user.id,
+    //   fullname: userData.fullname,
+    //   // username: user.username,
+    //   email: userData.email,
+    //   phone: userData.phone,
+    // role: role?.name || "N/A",
+    // address: user.address,
+    // gender: user.gender,
+    // date_of_birth: user.date_of_birth,
+    // province: user.province,
+    // district: user.district,
+    // ward: user.ward,
+    // isActivated: user.isActivated,
+    // isDeleted: user.isDeleted,
+    // createdAt: user.createdAt,
+
+    // res
+    //   .status(200)
+    //   .json({ message: "User updated successfully", data: userResponse });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to update user", error: error.message });
+  }
+};
 module.exports = {
   createAccount,
   createProfile,
@@ -280,4 +481,9 @@ module.exports = {
   createUserAccount,
   updateUserProfile,
   updateFamilyMember,
+  getUsers,
+  getUserById,
+  createUser,
+  lockUser,
+  updateUser,
 };
