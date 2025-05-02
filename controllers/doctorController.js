@@ -27,7 +27,8 @@ const createDoctor = async (req, res) => {
 
     // Kiểm tra xem bác sĩ đã tồn tại chưa
     let doctor = await Doctor.findOne({
-      where: { certificate_id: licenseCode },
+      // where: { certificate_id: licenseCode },
+      where: { certificate_id: null },
     });
 
     // Bệnh viện hiện tại
@@ -66,7 +67,8 @@ const createDoctor = async (req, res) => {
         {
           description,
           user_id: newAccount.id,
-          certificate_id: licenseCode,
+          // certificate_id: licenseCode,
+          certificate_id: null,
         },
         { transaction: t }
       );
@@ -175,7 +177,8 @@ const updateDoctor1 = async (req, res) => {
     await Doctor.update(
       {
         description,
-        certificate_id: licenseCode,
+        // certificate_id: licenseCode,
+        certificate_id: null,
       },
       { where: { id }, transaction: t }
     );
@@ -608,7 +611,8 @@ const getDoctorOfHospital = async (req, res) => {
         {
           model: Doctor,
           as: "doctor",
-          attributes: ["id", "description", "user_id", "certificate_id"],
+          // attributes: ["id", "description", "user_id", "certificate_id"],
+          attributes: ["id", "description", "user_id"],
           include: [
             {
               model: User,
@@ -658,7 +662,7 @@ const getDoctorOfHospital = async (req, res) => {
       description: item.doctor.description,
       gender: item.doctor.user.gender,
       birthday: item.doctor.user.date_of_birth,
-      licenseCode: item.doctor.certificate_id,
+      // licenseCode: item.doctor.certificate_id,
       consultation_fee: item.doctor.doctorSpecialty.map(
         (specialty) => specialty.consultation_fee
       ),
@@ -872,7 +876,7 @@ const getAllDoctorAdmin = async (req, res) => {
       description: doctor.description,
       gender: doctor.user.gender,
       birthday: doctor.user.date_of_birth,
-      licenseCode: doctor.certificate_id,
+      // licenseCode: doctor.certificate_id,
       consultation_fee: doctor.doctorSpecialty.map(
         (specialty) => specialty.consultation_fee
       ),
@@ -1089,7 +1093,8 @@ const getDoctorByLicenseCode = async (req, res) => {
         email: doctor.user.email,
         avatar: doctor.user.avatar,
         description: doctor.description,
-        certificate_id: doctor.certificate_id,
+        // certificate_id: doctor.certificate_id,
+        certificate_id: null,
         gender: doctor.user.gender,
         birthday: doctor.user.date_of_birth,
       };
