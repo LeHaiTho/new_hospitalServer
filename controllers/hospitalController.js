@@ -9,7 +9,6 @@ const {
   DoctorSpecialty,
 } = require("../models");
 const Hospital = require("../models/hospitalModel");
-const WorkingHour = require("../models/workingHourModel");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -17,7 +16,6 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../services/emailService");
 const { Json } = require("sequelize/lib/utils");
 const moment = require("moment");
-const HospitalShift = require("../models/hospitalShiftModel");
 const Room = require("../models/roomModel");
 
 // Thêm mới bệnh viện + tài khoản quản lý
@@ -331,9 +329,9 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   return distance; // khoảng cách tính bằng km

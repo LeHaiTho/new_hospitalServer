@@ -38,7 +38,7 @@ const TimeSlot = sequelize.define(
   },
   {
     timestamps: true,
-    tableName: "time_slots",
+    tableName: "TimeSlot",
   }
 );
 

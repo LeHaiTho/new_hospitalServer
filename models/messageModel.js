@@ -46,7 +46,7 @@ const Message = sequelize.define(
   },
   {
     timestamps: true,
-    tableName: "messages",
+    tableName: "Messages",
   }
 );
 

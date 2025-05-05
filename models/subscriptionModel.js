@@ -28,7 +28,7 @@ const Subscription = sequelize.define(
     package_id: {
       type: DataTypes.INTEGER,
       references: {
-        model: "packages",
+        model: Package,
         key: "id",
       },
     },
@@ -45,7 +45,7 @@ const Subscription = sequelize.define(
   },
   {
     timestamps: true,
-    tableName: "subscriptions",
+    tableName: "Subscriptions",
   }
 );
 

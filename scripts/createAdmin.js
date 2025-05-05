@@ -24,7 +24,7 @@ const createAdmin = async (req, res) => {
     }
 
     let admin = await User.findOne({
-      where: { email: "adhospitallht@gmail.com" },
+      where: { email: "medcare.nvuhung@gmail.com" },
     });
     if (!admin) {
       admin = await User.create({
@@ -32,7 +32,7 @@ const createAdmin = async (req, res) => {
         password: hashedPassword,
         email,
         role_id: adminRole.id,
-        isActived: true,
+        isActivated: true,
         isFirstLogin: false,
         status: true,
       });
