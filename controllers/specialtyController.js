@@ -141,53 +141,6 @@ const getListSpecialtyOnlyIdAndName = async (req, res) => {
     res.status(500).json({ message: "Failed to get specialty" });
   }
 };
-
-// const updateSpecialty = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { name, description } = req.body;
-//     const file = req.file;
-//     const specialty = await Specialty.findByPk(id);
-//     if (!specialty) {
-//       return res
-//         .status(404)
-//         .json({ message: "Vui lòng chọn chuyên khoa để thay đổi!" });
-//     }
-
-//     const slug = slugify(name, { lower: true, strict: true });
-//     let photoUrl = specialty.photo;
-//     if (file) {
-//       photoUrl = `/uploads/${file.filename}`;
-//     }
-//     const updatedSpecialty = await specialty.update({
-//       name,
-//       photo: photoUrl,
-//       description,
-//       slug,
-//     });
-//     res.status(200).json({ updatedSpecialty });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({ message: "Failed to update specialty" });
-//   }
-// };
-
-// comment đêm
-// const deleteSpecialty = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const specialty = await Specialty.findByPk(id);
-//     if (!specialty) {
-//       return res.status(404).json({ message: "Specialty not found" });
-//     }
-//     await specialty.destroy();
-//     res.status(200).json({ message: "Specialty deleted successfully" });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({ message: "Failed to delete specialty" });
-//   }
-// };
-// Lấy chuyên khoa theo id để lấy danh sách bác sĩ và bệnh viện
 const getSpecialtyIdFilterList = async (req, res) => {
   const { specialtyId } = req.params;
   const { type } = req.query;
@@ -278,7 +231,10 @@ const getSpecialtyIdFilterList = async (req, res) => {
           {
             model: HospitalSpecialty,
             as: "hospitalSpecialty",
-            where: { specialty_id: specialtyId }, // Lọc theo chuyên khoa
+            where: {
+              specialty_id: specialtyId,
+              consultation_fee: { [Op.gt]: 0 },
+            },
             include: [
               {
                 model: Specialty,

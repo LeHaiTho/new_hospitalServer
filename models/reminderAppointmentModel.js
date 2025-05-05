@@ -3,7 +3,7 @@ const sequelize = require("../config/database");
 const Appointment = require("./appointmentModel");
 
 const ReminderAppointment = sequelize.define(
-  "reminder_appointment",
+  "ReminderAppointment",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -28,7 +28,7 @@ const ReminderAppointment = sequelize.define(
       defaultValue: "pending",
     },
   },
-  { timestamps: true, tableName: "reminder_appointments" }
+  { timestamps: true, tableName: "ReminderAppointment" }
 );
 
 module.exports = ReminderAppointment;

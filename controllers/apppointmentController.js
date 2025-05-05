@@ -48,46 +48,7 @@ const createAppointment = async (req, res) => {
       },
     });
     let newAppointment;
-    // if (paymentMethod === "e-wallet") {
-    //   newAppointment = await Appointment.create({
-    //     appointment_code: appointmentCode,
-    //     user_id: req.user.id,
-    //     hospital_id: selectedHospital?.id || selectedHospital,
-    //     doctor_id: doctor.id,
-    //     specialty_id: selectedSpecialty,
-    //     reason_for_visit: reasonForVisit,
-    //     doctorSchedule_id: doctorScheduleId.doctorSchedule_id,
-    //     appointmentSlot_id: slot.id,
-    //     appointment_date: selectedDate,
-    //     payment_method: paymentMethod,
-    //     status: "confirmed", // mới sửa
-    //     price:
-    //       selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
-    //       doctor.consultation_fee[0],
-    //     payment_status: "pending",
-    //     // isDoctorSpecial: true,
-    //     isDoctorSpecial: isDoctorSpecial,
-    //   });
-    // } else {
-    //   newAppointment = await Appointment.create({
-    //     appointment_code: appointmentCode,
-    //     user_id: req.user.id,
-    //     hospital_id: selectedHospital?.id || selectedHospital,
-    //     doctor_id: doctor.id,
-    //     specialty_id: selectedSpecialty,
-    //     reason_for_visit: reasonForVisit,
-    //     doctorSchedule_id: doctorScheduleId.doctorSchedule_id,
-    //     appointmentSlot_id: slot.id,
-    //     appointment_date: selectedDate,
-    //     payment_method: paymentMethod,
-    //     status: "confirmed",
-    //     price:
-    //       selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
-    //       doctor.consultation_fee[0],
-    //     payment_status: "pending",
-    //     isDoctorSpecial: isDoctorSpecial,
-    //   });
-    // }
+
     if (paymentMethod === "e-wallet") {
       newAppointment = await Appointment.create({
         appointment_code: appointmentCode,
@@ -100,12 +61,11 @@ const createAppointment = async (req, res) => {
         appointmentSlot_id: slot.id,
         appointment_date: selectedDate,
         payment_method: paymentMethod,
-        status: "confirmed", // mới sửa
+        status: "confirmed",
         price:
           selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
           doctor.consultation_fee[0],
         payment_status: "pending",
-        // isDoctorSpecial: true,
         isDoctorSpecial: isDoctorSpecial,
       });
     }
@@ -1095,10 +1055,6 @@ const suggestAppointment = async (req, res) => {
       },
       include: [{ model: DoctorSchedule, as: "doctorSchedule" }], // Include thông tin DoctorSchedule
     });
-
-    // if (availableSlots.length === 0) {
-    //   return res.status(200).json({ message: "No available slots found." });
-    // }
 
     res.status(200).json({
       suggestedAppointments: availableSlots.map((slot) => ({

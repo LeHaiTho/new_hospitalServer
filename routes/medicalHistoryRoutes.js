@@ -17,7 +17,7 @@ router.post(
   upload.array("files"),
   receiveMedicalHistory
 );
-router.get("/get-medical-history-detail/:id", protect, getMedicalHistoryDetail);
+router.get("/get-medical-history-detail/:id", getMedicalHistoryDetail);
 router.get("/get-prescription-detail/:id", protect, getPrescriptionDetail);
 
 module.exports = router;

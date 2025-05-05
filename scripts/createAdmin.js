@@ -6,7 +6,6 @@ const User = require("../models/userModel");
 const Role = require("../models/roleModel");
 
 const email = process.env.EMAIL_USER;
-const password = process.env.ADMIN_PASSWORD;
 
 const createAdmin = async (req, res) => {
   try {
@@ -24,7 +23,7 @@ const createAdmin = async (req, res) => {
     }
 
     let admin = await User.findOne({
-      where: { email: "adhospitallht@gmail.com" },
+      where: { email },
     });
     if (!admin) {
       admin = await User.create({
@@ -32,7 +31,7 @@ const createAdmin = async (req, res) => {
         password: hashedPassword,
         email,
         role_id: adminRole.id,
-        isActived: true,
+        isActivated: true,
         isFirstLogin: false,
         status: true,
       });

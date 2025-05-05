@@ -8,8 +8,6 @@ const {
   getHospitalNearBy,
   getHospitalDetail,
   getHospitalConditions,
-  getRooms,
-  createRoom,
   getListHospitalForMobile,
   disableHospital,
 } = require("../controllers/hospitalController");
@@ -22,9 +20,7 @@ const router = express.Router();
 
 router.put("/disable/:id", disableHospital);
 router.get("/list-for-mobile", getListHospitalForMobile);
-router.post("/create", protect, createRoom);
 router.get("/near-by", getHospitalNearBy);
-router.get("/get", protect, getRooms);
 router.get("/shift", protect, getHospital_shiftTyes);
 router.post("/create-new", createHospital);
 router.get("/get-list", getListHospital);

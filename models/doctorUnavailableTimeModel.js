@@ -52,7 +52,7 @@ const DoctorUnavailableTime = sequelize.define(
     },
   },
   {
-    tableName: "doctor_unavailable_times",
+    tableName: "DoctorUnavailableTime",
     timestamps: true,
   }
 );

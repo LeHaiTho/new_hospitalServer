@@ -9,7 +9,6 @@ const {
   DoctorSpecialty,
 } = require("../models");
 const Hospital = require("../models/hospitalModel");
-const WorkingHour = require("../models/workingHourModel");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -17,8 +16,6 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../services/emailService");
 const { Json } = require("sequelize/lib/utils");
 const moment = require("moment");
-const HospitalShift = require("../models/hospitalShiftModel");
-const Room = require("../models/roomModel");
 
 // Thêm mới bệnh viện + tài khoản quản lý
 const createHospital = async (req, res) => {
@@ -192,7 +189,16 @@ const getHospitalById = async (req, res) => {
         where: {
           manager_id: req.user.id,
         },
+        include: [
+          {
+            model: User,
+            as: "manager",
+            attributes: { exclude: ["password"] },
+          },
+        ],
       });
+      // format data
+      hospital = hospital.get({ plain: true });
       return res.status(200).json({ hospital });
     } else {
       const { id } = req.params;
@@ -208,9 +214,10 @@ const getHospitalById = async (req, res) => {
 
 const updateHospital = async (req, res) => {
   const managerId = req.user.id;
-  const { name, address, email, description, latitude, longitude } = req.body;
+  const { name, address, email, description, latitude, longitude, phone } =
+    req.body;
   const { avatar, banner } = req.files || {};
-
+  console.log("req.body", req.body);
   try {
     // kiểm tra xem địa chỉ
     if (!address) {
@@ -222,6 +229,14 @@ const updateHospital = async (req, res) => {
         manager_id: managerId,
       },
     });
+
+    const manager = await User.findOne({
+      where: {
+        id: managerId,
+      },
+    });
+    manager.phone = phone;
+    await manager.save();
     if (avatar && avatar[0]) {
       const avatarUrl = `/uploads/${avatar[0].filename}`;
       hospital.avatar = avatarUrl;
@@ -448,43 +463,8 @@ const getHospitalConditions = async (req, res) => {
   //     .json({ message: "Internal server error", error: error.message });
   // }
 };
-const getRooms = async (req, res) => {
-  try {
-    console.log(req.user);
-    const hospital = await Hospital.findOne({
-      where: {
-        manager_id: req.user.id,
-      },
-    });
-    const rooms = await Room.findAll({
-      where: {
-        hospital_id: hospital.id,
-      },
-    });
-    return res.status(200).json({ rooms });
-    console.log(hospital);
-  } catch (error) {
-    console.log(error);
-  }
-};
 
-const createRoom = async (req, res) => {
-  const { name } = req.body;
-  try {
-    const hospital = await Hospital.findOne({
-      where: {
-        manager_id: req.user.id,
-      },
-    });
-    const newRoom = await Room.create({
-      name,
-      hospital_id: hospital.id,
-    });
-    res.status(201).json(newRoom);
-  } catch (err) {
-    console.log(err);
-  }
-};
+
 
 // Vô hiệu hóa bệnh viện / tài khoản manager /bác sĩ / lịch khám
 // const disableHospital = async (req, res) => {
@@ -581,8 +561,6 @@ module.exports = {
   getHospitalNearBy,
   getHospitalDetail,
   getHospitalConditions,
-  createRoom,
-  getRooms,
   getListHospitalForMobile,
   disableHospital,
 };
