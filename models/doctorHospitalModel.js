@@ -33,7 +33,7 @@ const DoctorHospital = sequelize.define(
       defaultValue: false,
     },
   },
-  { timestamps: true, tableName: "DoctorHospital" }
+  { timestamps: true, tableName: "DoctorHospitals" }
 );
 
 module.exports = DoctorHospital;

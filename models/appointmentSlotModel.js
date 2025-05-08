@@ -48,7 +48,7 @@ const AppointmentSlot = sequelize.define(
       defaultValue: false,
     },
   },
-  { timestamps: true, tableName: "AppointmentSlot" }
+  { timestamps: true, tableName: "AppointmentSlots" }
 );
 
 module.exports = AppointmentSlot;

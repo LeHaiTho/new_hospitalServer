@@ -28,7 +28,7 @@ const ReminderAppointment = sequelize.define(
       defaultValue: "pending",
     },
   },
-  { timestamps: true, tableName: "ReminderAppointment" }
+  { timestamps: true, tableName: "ReminderAppointments" }
 );
 
 module.exports = ReminderAppointment;

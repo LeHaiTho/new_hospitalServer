@@ -62,7 +62,7 @@ const MedicalRecord = sequelize.define(
       defaultValue: false,
     },
   },
-  { timestamps: true, tableName: "MedicalRecord" }
+  { timestamps: true, tableName: "MedicalRecords" }
 );
 
 module.exports = MedicalRecord;

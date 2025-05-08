@@ -24,7 +24,7 @@ const WorkingDay = sequelize.define(
   },
   {
     timestamps: true,
-    tableName: "WorkingDay",
+    tableName: "WorkingDays",
   }
 );
 
