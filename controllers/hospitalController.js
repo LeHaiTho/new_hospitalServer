@@ -464,8 +464,6 @@ const getHospitalConditions = async (req, res) => {
   // }
 };
 
-
-
 // Vô hiệu hóa bệnh viện / tài khoản manager /bác sĩ / lịch khám
 // const disableHospital = async (req, res) => {
 //   try {
