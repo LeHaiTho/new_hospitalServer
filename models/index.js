@@ -11,7 +11,6 @@ const DoctorHospital = require("./doctorHospitalModel");
 const DoctorSchedule = require("./doctorScheduleModel");
 const TimeSlot = require("./timeSlotModel");
 const Rating = require("./ratingModel");
-const HospitalShift = require("./hospitalShiftModel");
 const WorkingDay = require("./workingDayModel");
 const AppointmentSlot = require("./appointmentSlotModel");
 const Appointment = require("./appointmentModel");
@@ -34,10 +33,6 @@ const ChatRoom = require("./chatRoomModel");
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
 
 Hospital.belongsTo(User, { foreignKey: "manager_id", as: "manager" });
-HospitalShift.belongsTo(Hospital, {
-  foreignKey: "hospital_id",
-  as: "hospital",
-});
 // HospitalSpecialty.belongsTo(Hospital, {
 //   foreignKey: "hospital_id",
 //   as: "hospital",
@@ -87,11 +82,6 @@ Hospital.hasMany(HospitalSpecialty, {
 Doctor.hasMany(DoctorSpecialty, {
   foreignKey: "doctor_id",
   as: "doctorSpecialty",
-});
-
-DoctorSchedule.hasMany(HospitalShift, {
-  foreignKey: "hospital_shift_id",
-  as: "hospitalShift",
 });
 
 DoctorSchedule.belongsTo(Hospital, {

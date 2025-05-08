@@ -53,13 +53,4 @@ const HospitalSpecialty = sequelize.define(
   }
 );
 
-// HospitalSpecialty.belongsTo(Hospital, {
-//   foreignKey: "hospital_id",
-//   as: "hospital",
-// });
-// HospitalSpecialty.belongsTo(Specialty, {
-//   foreignKey: "specialty_id",
-//   as: "specialty",
-// });
-
 module.exports = HospitalSpecialty;

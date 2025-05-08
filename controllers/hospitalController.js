@@ -6,7 +6,6 @@ const {
   Specialty,
   Doctor,
   DoctorHospital,
-  DoctorSpecialty,
 } = require("../models");
 const Hospital = require("../models/hospitalModel");
 const User = require("../models/userModel");
@@ -136,6 +135,7 @@ const getListHospital = async (req, res) => {
     });
     res.status(200).json({ hospitals });
   } catch (error) {
+    console.log("error", error);
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
