@@ -40,10 +40,7 @@ const getRatings = async (req, res) => {
         },
       ],
     });
-    // const reviewData = reviews.map((review) => ({
-    //   ...review.get(),
-    //   user: review.user,
-    // }));
+
     res.status(200).json({ reviews });
   } catch (error) {
     console.log(error);

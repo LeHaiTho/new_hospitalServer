@@ -3,7 +3,7 @@ const sequelize = require("../config/database");
 const Appointment = require("./appointmentModel");
 
 const ReminderAppointment = sequelize.define(
-  "reminder_appointment",
+  "ReminderAppointment",
   {
     id: {
       type: DataTypes.INTEGER,

@@ -93,62 +93,6 @@ const sendNotification = async (expoPushToken, title, body, url) => {
   }
 };
 
-// const createNotification = async (userId, type, data, template, url) => {
-//   // tạo template thông báo
-//   const notificationTitle = template?.title?.replace(
-//     /{(\w+)}/g,
-//     (_, key) => data[key] || ""
-//   );
-//   const notificationBody = template?.body?.replace(
-//     /{(\w+)}/g,
-//     (_, key) => data[key] || ""
-//   );
-
-//   const expoPushToken = await PushToken.findOne({
-//     where: {
-//       user_id: userId,
-//     },
-//   });
-
-//   await Notification.create({
-//     user_id: userId,
-//     type: type,
-//     title: notificationTitle, // Ví dụ: "Bệnh viện ABC đã xác nhận lịch hẹn của bạn"
-//     body: notificationBody, // Nội dung ngắn của thông báo
-//     data: data,
-//     url: url, // Đường dẫn chuyển đến chi tiết liên quan
-//   });
-//   sendNotification(
-//     expoPushToken.pushToken,
-//     // notificationTitle,,
-//     "hello",
-//     notificationBody,
-//     url
-//   );
-// }; viết lại ở trên cùng
-
-// generate notification for appointment
-// const generateAppointmentNotification = (appointmentStatus, data) => {
-//   let template;
-//   switch (appointmentStatus) {
-//     case "confirmed":
-//       template = {
-//         title: `Lịch hẹn tại ${data.hospital_name} đã được xác nhận`,
-//         body: `Lịch hẹn của bạn vào ngày ${data.appointment_date} đã được xác nhận.`,
-//       };
-//       break;
-//     case "cancelled":
-//       template = {
-//         title: `Lịch hẹn tại ${data.hospital_name} đã bị hủy`,
-//         body: `Lịch hẹn của bạn vào ngày ${data.appointment_date} đã bị hủy.`,
-//       };
-//       break;
-//     default:
-//       break;
-//   }
-//   return template;
-// };
-// viết lại
 const generateNotification = (type, data) => {
   switch (type) {
     case "appointment_confirmed":
@@ -174,58 +118,30 @@ const generateNotification = (type, data) => {
   }
 };
 
-// const createAppointmentNotification = async (
-//   userId,
-//   appointmentId,
-//   hospitalName,
-//   appointmentDate,
-//   appointmentStatus
-// ) => {
-//   const data = {
-//     appointment_id: appointmentId,
-//     hospital_name: hospitalName,
-//     appointment_date: appointmentDate,
-//     appointment_status: appointmentStatus,
-//   };
-//   const template = generateAppointmentNotification(appointmentStatus, data);
-//   await createNotification(
-//     userId,
-//     "appointment",
-//     data,
-//     template,
-//     `appointment/${appointmentId}`
-//   );
-// };
-
-// get notification by user id
 const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({
       where: { user_id: req.user.id },
       order: [["createdAt", "DESC"]],
     });
-    // Tạo danh sách notificationDetails
     const notificationDetails = notifications?.map((notification) => {
-      // Giả sử notification.data là một JSON string, bạn cần phân tích nó
-      const data = notification.data; // Đã được lưu trữ dưới dạng JSON
+      const data = notification.data;
 
-      // Lấy trạng thái lịch hẹn
       const appointmentStatus = data.appointment_status;
 
-      // Tạo nội dung thông báo
       const template = generateNotification(notification?.type, data);
 
       return {
         id: notification?.id,
         user_id: notification?.user_id,
         type: notification?.type,
-        title: template?.title, // Lấy title từ template
-        body: template?.body, // Lấy body từ template
+        title: template?.title,
+        body: template?.body,
         status: notification?.status,
         createdAt: notification?.createdAt,
         updatedAt: notification?.updatedAt,
         url: notification?.url,
-        data: data, // Dữ liệu gốc nếu cần
+        data: data,
       };
     });
 
@@ -267,35 +183,6 @@ const markAllNotificationAsRead = async (req, res) => {
     console.error("Error marking all notifications as read:", error);
   }
 };
-
-// async function createAppointmentNotification(
-//   userId,
-//   appointmentId,
-//   hospitalName,
-//   appointmentDate,
-//   appointmentStatus
-// ) {
-//   let template;
-
-//   if (appointmentStatus === "confirmed") {
-//     template = {
-//       title: `Lịch hẹn tại {hospital_name} đã được xác nhận`,
-//       body: `Lịch hẹn của bạn vào ngày {appointment_date} đã được xác nhận.`,
-//     };
-//   }
-
-//   await createNotification(
-//     userId,
-//     "appointment",
-//     {
-//       appointment_id: appointmentId,
-//       hospital_name: hospitalName,
-//       appointment_date: appointmentDate,
-//     },
-//     template,
-//     `appointment/${appointmentId}`
-//   );
-// }
 
 module.exports = {
   sendNotification,

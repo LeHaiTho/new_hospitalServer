@@ -39,16 +39,6 @@ const addHospitalSpecialty = async (req, res) => {
         });
         res.status(200).json({ message: "Cập nhật dịch vụ thành công!" });
       }
-
-      // await HospitalSpecialty.create({
-      //   hospital_id: hospital.id,
-      //   specialty_id: specialty,
-      //   name,
-      //   description,
-      //   consultation_fee,
-      //   image: imageUrl,
-      // });
-      // res.status(200).json({ message: "Thêm chuyên khoa thành công!" });
     }
   } catch (error) {
     console.log(error);
@@ -138,51 +128,6 @@ const getListSpecialtyOfHospital = async (req, res) => {
     console.log(error);
   }
 };
-
-// lấy bệnh viện theo chuyên khoa và id bác sĩ
-// const getHospitalBySpecialtyAndDoctorId = async (req, res) => {
-//   const { specialtyId, doctorId } = req.params;
-
-//   try {
-//     // Find hospitals associated with the given specialty and doctor
-//     // const hospitals = await Hospital.findAll({
-//     //   include: [
-//     //     {
-//     //       model: HospitalSpecialty,
-//     //       as: "hospitalSpecialty",
-//     //       where: {
-//     //         specialty_id: specialtyId,
-//     //       },
-//     //     },
-//     //     {
-//     //       model: DoctorHospital,
-//     //       as: "doctorHospital",
-//     //       where: {
-//     //         doctor_id: doctorId,
-//     //       },
-//     //     },
-//     //   ],
-//     // });
-//     const doctorHospitals = await DoctorHospital.findAll({
-//       where: {
-//         doctor_id: doctorId,
-//       },
-//     });
-//     // lấy bệnh viện từ doctorHospital tại specialtyId=specialtyId
-//     const hospitals = await HospitalSpecialty.findAll({
-//       where: {
-//         hospital_id: doctorHospitals.map((item) => item.hospital_id),
-//         specialty_id: specialtyId,
-//       },
-//     });
-//     res.json(hospitals);
-//   } catch (error) {
-//     console.error(error);
-//     res
-//       .status(500)
-//       .json({ error: "An error occurred while retrieving hospitals" });
-//   }
-// };
 
 const getHospitalBySpecialtyAndDoctorId = async (req, res) => {
   const { specialtyId, doctorId } = req.params;

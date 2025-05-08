@@ -71,10 +71,8 @@ const chat = async (req, res) => {
   let specialtyId = null;
   let matchedSpecialty = "";
 
-  // Chuyển câu hỏi thành chữ thường để việc so sánh dễ dàng hơn
   const lowerCaseQuestion = question.toLowerCase();
 
-  // Kiểm tra và gán chuyên khoa dựa trên từ khóa
   for (const [specialty, keywords] of Object.entries(medicalKeywords)) {
     if (keywords.some((keyword) => lowerCaseQuestion.includes(keyword))) {
       specialtyId = {
@@ -90,9 +88,6 @@ const chat = async (req, res) => {
     }
   }
 
-  // Kiểm tra xem có chuyên khoa phù hợp hay không
-
-  // Gọi OpenAI nếu không tìm thấy chuyên khoa
   if (!specialtyId) {
     const completion = await openai.chat.completions.create({
       messages: [
@@ -110,7 +105,6 @@ const chat = async (req, res) => {
     });
   }
 
-  // Lấy danh sách bệnh viện theo chuyên khoa
   const hospitals = await Hospital.findOne({
     include: {
       model: HospitalSpecialty,

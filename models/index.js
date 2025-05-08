@@ -4,7 +4,6 @@ const Hospital = require("./hospitalModel");
 const HospitalSpecialty = require("./hospitalSpecialtyModel");
 const Role = require("./roleModel");
 const Specialty = require("./specialtyModel");
-const MedicalRecord = require("./medicalRecordModel");
 const User = require("./userModel");
 const PushToken = require("./pushTokenModel");
 const Notification = require("./notificationModel");
@@ -28,7 +27,6 @@ const PrescriptionItem = require("./prescriptionItemsModel");
 const Question = require("./questionModel");
 const Comment = require("./commentModel");
 const Like = require("./likeModel");
-const Room = require("./roomModel");
 const Message = require("./messageModel");
 const Package = require("./packageModel");
 const Subscription = require("./subscriptionModel");
@@ -322,9 +320,6 @@ Like.belongsTo(Question, { foreignKey: "question_id", as: "question" });
 Specialty.hasMany(Question, { foreignKey: "specialty_id", as: "questions" });
 Question.belongsTo(Specialty, { foreignKey: "specialty_id", as: "specialty" });
 
-Room.belongsTo(Hospital, { foreignKey: "hospital_id", as: "hospital" });
-Hospital.hasMany(Room, { foreignKey: "hospital_id", as: "rooms" });
-
 Message.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
 Message.belongsTo(User, { foreignKey: "receiver_id", as: "receiver" });
 
@@ -354,14 +349,6 @@ Doctor.hasMany(ChatRoom, { foreignKey: "doctor_id", as: "chatRooms" });
 User.hasMany(ChatRoom, { foreignKey: "user_id", as: "chatRooms" });
 ChatRoom.belongsTo(User, { foreignKey: "user_id", as: "user" });
 
-Room.hasMany(AppointmentSlot, {
-  foreignKey: "room_id",
-  as: "appointmentSlots",
-});
-AppointmentSlot.belongsTo(Room, { foreignKey: "room_id", as: "room" });
-DoctorSchedule.belongsTo(Room, { foreignKey: "room_id", as: "room" });
-Room.hasMany(DoctorSchedule, { foreignKey: "room_id", as: "doctorSchedules" });
-
 module.exports = {
   Doctor,
   DoctorSpecialty,
@@ -374,12 +361,10 @@ module.exports = {
   TimeSlot,
   AppointmentSlot,
   Appointment,
-  MedicalRecord,
   FamilyMember,
   PushToken,
   Notification,
   Rating,
-  Room,
   ReminderAppointment,
   DoctorUnavailableTime,
   ExamResult,

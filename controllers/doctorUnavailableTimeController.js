@@ -130,122 +130,6 @@ const getDoctorUnavailableTimeListByHospital = async (req, res) => {
   }
 };
 
-// update status
-
-// const updateDoctorUnavailableTimeStatus = async (req, res) => {
-//   const { id } = req.params;
-//   const { status,reason_reject } = req.body;
-
-//   try {
-//     const currentHospital = await Hospital.findOne({
-//       where: {
-//         manager_id: req.user.id,
-//       },
-//     });
-//     // Cập nhật trạng thái của thời gian nghỉ bác sĩ
-//     await DoctorUnavailableTime.update(
-//       { status, updatedAt: new Date() },
-//       { where: { id, hospital_id: currentHospital.id } }
-//     );
-
-//     if (status === "approved") {
-//       // Lấy thông tin thời gian nghỉ bác sĩ
-//       const doctorUnavailableTime = await DoctorUnavailableTime.findOne({
-//         where: { id },
-//         include: [
-//           {
-//             model: Doctor,
-//             as: "doctor",
-//           },
-//         ],
-//       });
-
-//       if (!doctorUnavailableTime) {
-//         return res
-//           .status(404)
-//           .json({ message: "Doctor unavailable time not found" });
-//       }
-
-//       const { doctor_id, unavailable_start_date, unavailable_end_date } =
-//         doctorUnavailableTime;
-
-//       // Chuyển đổi ngày bắt đầu và kết thúc nghỉ bác sĩ về định dạng 'YYYY-MM-DD'
-
-//       // Tìm tất cả các cuộc hẹn có ngày nằm trong khoảng thời gian nghỉ
-//       const appointments = await Appointment.findAll({
-//         where: {
-//           doctor_id: doctor_id,
-//           hospital_id: currentHospital.id,
-//         },
-//       });
-//       console.log("appointments", appointments);
-//       const appointmentDates = appointments.filter((item) => {
-//         if (
-//           moment(unavailable_start_date).format("DD/MM/YYYY") >=
-//             moment(item.appointment_date).format("DD/MM/YYYY") &&
-//           moment(unavailable_end_date).format("DD/MM/YYYY") <=
-//             moment(item.appointment_date).format("DD/MM/YYYY")
-//         ) {
-//           return item;
-//         }
-//       });
-//       // console.log("appointmentDates", appointmentDates);
-//       // cập nhật trạng thái của lịch hẹn thuộc khoảng thời gian nghỉ là waiting để đợi khách hàng chọn lịch khác
-//       const updateAppointmentInUnavailableTime = appointmentDates.map(
-//         async (item) => {
-//           if (item.status === "confirmed") {
-//             const updateAppointment = await Appointment.update(
-//               { status: "waiting", updatedAt: new Date() },
-//               { where: { id: item.id } }
-//             );
-//           }
-//         }
-//       );
-
-//       // đề xuất gợi ý lịch khám mới cho khách hàng
-
-//       // lấy những slot khám của bác sĩ thuộc khoảng thời gian nghỉ, isDeleted (true) để ẩn đi
-//       const doctorSchedule = await DoctorSchedule.findAll({
-//         where: {
-//           doctor_id: doctor_id,
-//           hospital_id: currentHospital.id,
-//         },
-//       });
-//       const doctorScheduleDate = doctorSchedule.filter(
-//         (item) =>
-//           moment(item.date).format("DD/MM/YYYY") >=
-//             moment(unavailable_start_date).format("DD/MM/YYYY") &&
-//           moment(item.date).format("DD/MM/YYYY") <=
-//             moment(unavailable_end_date).format("DD/MM/YYYY")
-//       );
-//       const getSlotInUnavailableTime = await AppointmentSlot.findAll({
-//         where: {
-//           doctorSchedule_id: doctorScheduleDate.map((item) => item.id),
-//         },
-//       });
-
-//       const updateSlotInUnavailableTime = getSlotInUnavailableTime.map(
-//         (item) => {
-//           item.update({ isDeleted: true });
-//         }
-//       );
-//       // cập nhật trạng thái của slot khám thuộc khoảng thời gian nghỉ là isDeleted = true
-//       res.status(200).json({
-//         appointmentDates,
-//         doctorScheduleDate,
-//         getSlotInUnavailableTime,
-//         updateSlotInUnavailableTime,
-//       });
-//     } else {
-//       res
-//         .status(200)
-//         .json({ message: "Doctor unavailable time status updated" });
-//     }
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//     console.error("Error updating doctor unavailable time:", error);
-//   }
-// };
 const updateDoctorUnavailableTimeStatus = async (req, res) => {
   const { id } = req.params;
   const { status, reason_reject } = req.body;
@@ -285,11 +169,9 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
     );
 
     if (updated[0] === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "Doctor unavailable time not found or not authorized",
-        });
+      return res.status(404).json({
+        message: "Doctor unavailable time not found or not authorized",
+      });
     }
 
     if (status === "approved") {

@@ -24,7 +24,7 @@ const PrescriptionItem = sequelize.define(
       type: DataTypes.STRING,
     },
     quantity: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     instructions: {
       type: DataTypes.TEXT,

@@ -14,14 +14,14 @@ const Subscription = sequelize.define(
     user_id: {
       type: DataTypes.INTEGER,
       references: {
-        model: "Users",
+        model: User,
         key: "id",
       },
     },
     doctor_id: {
       type: DataTypes.INTEGER,
       references: {
-        model: "Doctors",
+        model: Doctor,
         key: "id",
       },
     },

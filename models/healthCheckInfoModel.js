@@ -18,13 +18,13 @@ const HealthCheckInfo = sequelize.define(
       },
     },
     weight: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.STRING,
     },
     height: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.STRING,
     },
     heart_rate: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.STRING,
     },
     blood_pressure: {
       type: DataTypes.STRING,

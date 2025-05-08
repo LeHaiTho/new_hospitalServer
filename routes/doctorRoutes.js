@@ -10,7 +10,7 @@ const {
   getDoctorByLicenseCode,
   getAllDoctorOnline,
   getAllDoctorAdmin,
-  updateDoctor1,
+  updateDoctor,
 } = require("../controllers/doctorController");
 const { protect } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
@@ -24,13 +24,7 @@ router.get("/name-list", protect, getDoctorNameList);
 router.get("/all", getAllDoctor);
 router.get("/:id", getDoctorDetail);
 router.get("/filter", filterDoctor);
-router.put(
-  "/update-doctor/:id",
-  protect,
-  upload.single("image"),
-  updateDoctor1
-);
-// lấy bác sĩ theo ID chỉ lấy name
+router.put("/update-doctor/:id", protect, upload.single("image"), updateDoctor);
 router.get("/get-doctor-by-id/:id", getDoctorById);
 router.get("/", getAllDoctorAdmin);
 module.exports = router;

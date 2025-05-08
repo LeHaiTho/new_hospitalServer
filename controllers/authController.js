@@ -265,12 +265,11 @@ const googleSignIn = async (req, res) => {
   try {
     let user = await User.findOne({
       where: { email },
-      include: { model: Role, as: "role", attributes: ["name"] }, // Include the role in the response
+      include: { model: Role, as: "role", attributes: ["name"] },
     });
     const role = await Role.findOne({
       where: { name: "customer" },
     });
-    // console.log(role);
     if (user?.isActivated === false) {
       return res.status(404).json({ message: "Tài khoản đã bị khóa" });
     }
@@ -286,7 +285,6 @@ const googleSignIn = async (req, res) => {
     }
     const tokenPayload = {
       id: user.id,
-      // display_name: name,
       username: user.username,
       email: user.email,
       role: user.role?.name,
