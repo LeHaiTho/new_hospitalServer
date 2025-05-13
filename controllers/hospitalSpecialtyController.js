@@ -8,12 +8,15 @@ const {
 const HospitalSpecialty = require("../models/hospitalSpecialtyModel");
 const Specialty = require("../models/specialtyModel");
 const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 
 const addHospitalSpecialty = async (req, res) => {
   const { hospital_id, specialty, name, description, consultation_fee } =
     req.body;
   const file = req.file;
-  const imageUrl = `/uploads/${file.filename}`;
+  const imageUrl = file ? `/uploads/${file.filename}` : null;
+
   try {
     const { id } = req.user;
     if (req.user) {
@@ -29,6 +32,7 @@ const addHospitalSpecialty = async (req, res) => {
           specialty_id: specialty,
         },
       });
+
       if (existingSpecialty) {
         // Nếu đã tồn tại, cập nhật thông tin mới
         await existingSpecialty.update({
@@ -38,11 +42,122 @@ const addHospitalSpecialty = async (req, res) => {
           image: imageUrl || existingSpecialty.image, // Giữ ảnh cũ nếu không tải ảnh mới
         });
         res.status(200).json({ message: "Cập nhật dịch vụ thành công!" });
+      } else {
+        // Nếu chưa tồn tại, tạo mới
+        await HospitalSpecialty.create({
+          hospital_id: hospital.id,
+          specialty_id: specialty,
+          name,
+          description,
+          consultation_fee,
+          image: imageUrl,
+        });
+        res.status(201).json({ message: "Thêm dịch vụ thành công!" });
       }
     }
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Failed to add hospital specialty" });
+  }
+};
+
+// Cập nhật chuyên khoa của bệnh viện
+const updateHospitalSpecialty = async (req, res) => {
+  const { id } = req.params;
+  const { name, description, consultation_fee, specialty } = req.body;
+  const file = req.file;
+
+  try {
+    const hospitalSpecialty = await HospitalSpecialty.findByPk(id);
+
+    if (!hospitalSpecialty) {
+      return res.status(404).json({ message: "Không tìm thấy chuyên khoa" });
+    }
+
+    // Kiểm tra quyền - chỉ manager của bệnh viện mới được cập nhật
+    const hospital = await Hospital.findByPk(hospitalSpecialty.hospital_id);
+    if (hospital.manager_id !== req.user.id) {
+      return res.status(403).json({ message: "Không có quyền cập nhật" });
+    }
+
+    // Cập nhật thông tin
+    const updateData = {
+      name,
+      description,
+      consultation_fee,
+    };
+
+    // Cập nhật specialty_id nếu có
+    if (specialty) {
+      updateData.specialty_id = specialty;
+    }
+
+    // Cập nhật ảnh nếu có
+    if (file) {
+      // Xóa ảnh cũ nếu có
+      if (hospitalSpecialty.image) {
+        const oldImagePath = path.join(
+          __dirname,
+          "..",
+          "public",
+          hospitalSpecialty.image
+        );
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      updateData.image = `/uploads/${file.filename}`;
+    }
+
+    await hospitalSpecialty.update(updateData);
+
+    res.status(200).json({
+      message: "Cập nhật chuyên khoa thành công",
+      specialty: hospitalSpecialty,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật chuyên khoa" });
+  }
+};
+
+// Xóa chuyên khoa của bệnh viện
+const deleteHospitalSpecialty = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const hospitalSpecialty = await HospitalSpecialty.findByPk(id);
+
+    if (!hospitalSpecialty) {
+      return res.status(404).json({ message: "Không tìm thấy chuyên khoa" });
+    }
+
+    // Kiểm tra quyền - chỉ manager của bệnh viện mới được xóa
+    const hospital = await Hospital.findByPk(hospitalSpecialty.hospital_id);
+    if (hospital.manager_id !== req.user.id) {
+      return res.status(403).json({ message: "Không có quyền xóa" });
+    }
+
+    // Xóa ảnh nếu có
+    if (hospitalSpecialty.image) {
+      const imagePath = path.join(
+        __dirname,
+        "..",
+        "public",
+        hospitalSpecialty.image
+      );
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    await hospitalSpecialty.destroy();
+
+    res.status(200).json({ message: "Xóa chuyên khoa thành công" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi xóa chuyên khoa" });
   }
 };
 
@@ -179,10 +294,13 @@ const getHospitalBySpecialtyAndDoctorId = async (req, res) => {
       .json({ error: "An error occurred while retrieving hospitals" });
   }
 };
+
 module.exports = {
   addHospitalSpecialty,
   getListHospitalSpecialties,
   getListSpecialtyOfHospital,
   addSpecialtyToHospital,
   getHospitalBySpecialtyAndDoctorId,
+  updateHospitalSpecialty,
+  deleteHospitalSpecialty,
 };

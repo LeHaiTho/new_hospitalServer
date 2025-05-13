@@ -7,7 +7,7 @@ const {
   getDoctorUnavailableTimeListByHospital,
   updateDoctorUnavailableTimeStatus,
 } = require("../controllers/doctorUnavailableTimeController");
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 router.post("/create", protect, createDoctorUnavailableTime);
 router.post("/get-appointment", appointmentByDoctorUnavailableTime);
@@ -18,4 +18,5 @@ router.get(
   getDoctorUnavailableTimeListByHospital
 );
 router.patch("/update-status/:id", protect, updateDoctorUnavailableTimeStatus);
+
 module.exports = router;

@@ -352,6 +352,7 @@ const getAllDoctor = async (req, res) => {
     // Trả về kết quả
     res.status(200).json({ doctorList });
   } catch (error) {
+    console.log("error", error);
     console.error("Error fetching doctors:", error.message);
     res
       .status(500)

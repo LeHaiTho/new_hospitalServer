@@ -3,9 +3,21 @@ const DoctorUnavailableTime = require("../models/doctorUnavailableTimeModel");
 const Appointment = require("../models/appointmentModel");
 const { Op } = require("sequelize");
 const moment = require("moment");
-const { Doctor, Hospital, AppointmentSlot } = require("../models");
+const {
+  Doctor,
+  Hospital,
+  AppointmentSlot,
+  HospitalSpecialty,
+} = require("../models");
 const User = require("../models/userModel");
 const DoctorSchedule = require("../models/doctorScheduleModel");
+const DoctorSpecialty = require("../models/doctorSpecialtyModel");
+const Specialty = require("../models/specialtyModel");
+const DoctorHospital = require("../models/doctorHospitalModel");
+const {
+  createCancelAppointmentNotification,
+} = require("./notificationController");
+
 const createDoctorUnavailableTime = async (req, res) => {
   const { workplace, fromDate, fromTime, toDate, toTime, reason, title } =
     req.body;
@@ -135,7 +147,7 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
   const { status, reason_reject } = req.body;
 
   try {
-    // Find the hospital managed by the current user
+    // Tìm bệnh viện của người quản lý hiện tại
     const currentHospital = await Hospital.findOne({
       where: {
         manager_id: req.user.id,
@@ -146,7 +158,7 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
       return res.status(404).json({ message: "Hospital not found" });
     }
 
-    // Validate reason_reject for rejected status
+    // Kiểm tra lý do từ chối khi từ chối đơn
     if (
       status === "rejected" &&
       (!reason_reject || reason_reject.trim() === "")
@@ -156,7 +168,7 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
         .json({ message: "Lý do từ chối là bắt buộc khi hủy đơn" });
     }
 
-    // Update doctor unavailable time with status and reason_reject
+    // Cập nhật trạng thái đơn nghỉ phép
     const updated = await DoctorUnavailableTime.update(
       {
         status,
@@ -174,14 +186,26 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
       });
     }
 
+    // Nếu đơn được duyệt, xử lý các lịch hẹn bị ảnh hưởng
     if (status === "approved") {
-      // Fetch doctor unavailable time details
+      // Lấy thông tin chi tiết về đơn nghỉ phép
       const doctorUnavailableTime = await DoctorUnavailableTime.findOne({
         where: { id },
         include: [
           {
             model: Doctor,
             as: "doctor",
+            include: [
+              {
+                model: User,
+                as: "user",
+                attributes: ["fullname"],
+              },
+            ],
+          },
+          {
+            model: Hospital,
+            as: "hospital",
           },
         ],
       });
@@ -194,88 +218,335 @@ const updateDoctorUnavailableTimeStatus = async (req, res) => {
 
       const { doctor_id, unavailable_start_date, unavailable_end_date } =
         doctorUnavailableTime;
+      const doctorName = doctorUnavailableTime.doctor.user.fullname;
 
-      // Find appointments within the unavailable time range
+      console.log("Xử lý lịch hẹn cho bác sĩ ID:", doctor_id);
+
+      // Tìm tất cả lịch hẹn của bác sĩ trong khoảng thời gian nghỉ
       const appointments = await Appointment.findAll({
         where: {
           doctor_id: doctor_id,
-          hospital_id: currentHospital.id,
+          appointment_date: {
+            [Op.between]: [unavailable_start_date, unavailable_end_date],
+          },
+          status: "confirmed",
         },
+        include: [
+          {
+            model: AppointmentSlot,
+            as: "appointmentSlot",
+          },
+          {
+            model: Hospital,
+            as: "hospital",
+          },
+          {
+            model: Specialty,
+            as: "specialty",
+          },
+          {
+            model: User,
+            as: "user",
+          },
+        ],
       });
 
-      // Filter appointments that fall within the unavailable period
-      const appointmentDates = appointments.filter((item) => {
-        const appointmentDate = moment(item.appointment_date).format(
-          "DD/MM/YYYY"
-        );
-        const startDate = moment(unavailable_start_date).format("DD/MM/YYYY");
-        const endDate = moment(unavailable_end_date).format("DD/MM/YYYY");
-        return appointmentDate >= startDate && appointmentDate <= endDate;
-      });
+      console.log(`Tìm thấy ${appointments.length} lịch hẹn bị ảnh hưởng`);
 
-      // Update confirmed appointments to "waiting" status
-      const updateAppointmentInUnavailableTime = appointmentDates.map(
-        async (item) => {
-          if (item.status === "confirmed") {
-            await Appointment.update(
-              { status: "waiting", updatedAt: new Date() },
-              { where: { id: item.id } }
+      // Mảng lưu kết quả xử lý các lịch hẹn
+      let processedAppointments = [];
+
+      // Xử lý từng lịch hẹn
+      for (const appointment of appointments) {
+        const appointmentResult = {
+          id: appointment.id,
+          originalDoctor: doctorName,
+          appointmentDate: moment(appointment.appointment_date).format(
+            "DD/MM/YYYY"
+          ),
+          startTime: appointment.appointmentSlot?.start_time,
+          endTime: appointment.appointmentSlot?.end_time,
+          patientName: appointment.user?.fullname,
+          isDoctorSpecial: appointment.isDoctorSpecial,
+          action: "",
+          newDoctor: null,
+        };
+
+        if (appointment.isDoctorSpecial) {
+          // Lịch hẹn khám cá nhân - chuyển sang trạng thái waiting
+          console.log(
+            `Lịch hẹn ID ${appointment.id} là lịch hẹn cá nhân, chuyển sang trạng thái waiting`
+          );
+
+          await appointment.update({
+            status: "waiting",
+            updated_reason: `Bác sĩ ${doctorName} không thể khám trong thời gian này`,
+          });
+
+          // // Thông báo cho người dùng
+          // await createCancelAppointmentNotification(
+          //   appointment.user_id,
+          //   appointment.id,
+          //   appointment.hospital.name,
+          //   moment(appointment.appointment_date).format("DD/MM/YYYY"),
+          //   doctorName
+          // );
+
+          appointmentResult.action = "waiting";
+          processedAppointments.push(appointmentResult);
+        } else {
+          // Lịch hẹn khám dịch vụ - tìm bác sĩ thay thế
+          console.log(
+            `Lịch hẹn ID ${appointment.id} là lịch hẹn dịch vụ, tìm bác sĩ thay thế`
+          );
+
+          const replacementDoctor = await findReplacementDoctor(
+            appointment.hospital_id,
+            appointment.specialty_id,
+            appointment.appointment_date,
+            appointment.appointmentSlot.start_time,
+            appointment.appointmentSlot.end_time,
+            doctor_id
+          );
+
+          if (replacementDoctor) {
+            // Cập nhật lịch hẹn với bác sĩ mới
+            console.log(
+              `Tìm thấy bác sĩ thay thế: ${replacementDoctor.fullname}`
             );
+
+            await appointment.update({
+              doctor_id: replacementDoctor.id,
+              updated_reason: `Bác sĩ ${doctorName} không thể khám trong thời gian này, đã được thay thế bởi bác sĩ ${replacementDoctor.fullname}`,
+            });
+
+            appointmentResult.action = "replaced";
+            appointmentResult.newDoctor = replacementDoctor.fullname;
+            processedAppointments.push(appointmentResult);
+          } else {
+            // Không tìm thấy bác sĩ thay thế, chuyển sang trạng thái waiting
+            console.log(
+              `Không tìm thấy bác sĩ thay thế cho lịch hẹn ID ${appointment.id}, chuyển sang trạng thái waiting`
+            );
+
+            await appointment.update({
+              status: "waiting",
+              updated_reason: `Bác sĩ ${doctorName} không thể khám trong thời gian này và không tìm thấy bác sĩ thay thế`,
+            });
+
+            // Thông báo cho người dùng
+            // await createCancelAppointmentNotification(
+            //   appointment.user_id,
+            //   appointment.id,
+            //   appointment.hospital.name,
+            //   moment(appointment.appointment_date).format("DD/MM/YYYY"),
+            //   doctorName
+            // );
+
+            appointmentResult.action = "waiting_no_replacement";
+            processedAppointments.push(appointmentResult);
           }
         }
-      );
+      }
 
-      // Find doctor schedules within the unavailable time range
-      const doctorSchedule = await DoctorSchedule.findAll({
+      // Tìm lịch làm việc của bác sĩ trong khoảng thời gian nghỉ
+      const doctorSchedules = await DoctorSchedule.findAll({
         where: {
           doctor_id: doctor_id,
           hospital_id: currentHospital.id,
+          date: {
+            [Op.between]: [
+              moment(unavailable_start_date).format("YYYY-MM-DD"),
+              moment(unavailable_end_date).format("YYYY-MM-DD"),
+            ],
+          },
         },
+        include: [
+          {
+            model: AppointmentSlot,
+            as: "appointmentSlots",
+            where: {
+              isBooked: false, // Chỉ lấy các slot chưa được đặt
+            },
+            required: false,
+          },
+        ],
       });
 
-      const doctorScheduleDate = doctorSchedule.filter(
-        (item) =>
-          moment(item.date).format("DD/MM/YYYY") >=
-            moment(unavailable_start_date).format("DD/MM/YYYY") &&
-          moment(item.date).format("DD/MM/YYYY") <=
-            moment(unavailable_end_date).format("DD/MM/YYYY")
+      console.log(
+        `Tìm thấy ${doctorSchedules.length} lịch làm việc bị ảnh hưởng`
       );
 
-      // Find appointment slots for the affected schedules
-      const getSlotInUnavailableTime = await AppointmentSlot.findAll({
-        where: {
-          doctorSchedule_id: doctorScheduleDate.map((item) => item.id),
-        },
-      });
+      // Đánh dấu các slot chưa được đặt là đã xóa
+      for (const schedule of doctorSchedules) {
+        if (schedule.appointmentSlots && schedule.appointmentSlots.length > 0) {
+          console.log(
+            `Đánh dấu ${schedule.appointmentSlots.length} slot là đã xóa cho lịch làm việc ID ${schedule.id}`
+          );
 
-      // Update slots to isDeleted: true
-      const updateSlotInUnavailableTime = getSlotInUnavailableTime.map((item) =>
-        item.update({ isDeleted: true })
-      );
+          await AppointmentSlot.update(
+            { isDeleted: true },
+            {
+              where: {
+                id: {
+                  [Op.in]: schedule.appointmentSlots.map((slot) => slot.id),
+                },
+              },
+            }
+          );
+        }
+      }
 
-      // Wait for all updates to complete
-      await Promise.all([
-        ...updateAppointmentInUnavailableTime,
-        ...updateSlotInUnavailableTime,
-      ]);
-
-      res.status(200).json({
-        appointmentDates,
-        doctorScheduleDate,
-        getSlotInUnavailableTime,
-        updateSlotInUnavailableTime,
-        message: "Doctor unavailable time approved and appointments updated",
+      return res.status(200).json({
+        message: "Đã duyệt đơn nghỉ phép và xử lý lịch hẹn",
+        processedAppointments,
+        doctorUnavailableTime,
       });
     } else {
-      res.status(200).json({
-        message: `Doctor unavailable time status updated to ${status}${status === "rejected" ? " with rejection reason" : ""}`,
+      return res.status(200).json({
+        message: `Đơn nghỉ phép đã được ${
+          status === "rejected" ? "từ chối" : "cập nhật"
+        }`,
       });
     }
   } catch (error) {
     console.error("Error updating doctor unavailable time:", error);
-    res.status(500).json({ message: error.message });
+    return res
+      .status(500)
+      .json({ message: "Lỗi server", error: error.message });
   }
 };
+
+// Hàm tìm bác sĩ thay thế
+const findReplacementDoctor = async (
+  hospitalId,
+  specialtyId,
+  appointmentDate,
+  startTime,
+  endTime,
+  excludeDoctorId
+) => {
+  try {
+    // Tìm HospitalSpecialty để lấy ID
+    const hospitalSpecialty = await HospitalSpecialty.findOne({
+      where: {
+        hospital_id: hospitalId,
+        specialty_id: specialtyId,
+      },
+    });
+
+    if (!hospitalSpecialty) {
+      return null;
+    }
+
+    // Tìm tất cả bác sĩ cùng chuyên khoa và bệnh viện
+    const doctors = await Doctor.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "fullname"],
+        },
+        {
+          model: DoctorSpecialty,
+          as: "doctorSpecialties",
+          where: {
+            hospital_specialty_id: hospitalSpecialty.id,
+          },
+          required: true,
+        },
+        {
+          model: DoctorHospital,
+          as: "doctorHospital",
+          where: {
+            hospital_id: hospitalId,
+            is_active: true,
+          },
+          required: true,
+        },
+      ],
+      where: {
+        id: {
+          [Op.ne]: excludeDoctorId, // Loại trừ bác sĩ hiện tại
+        },
+      },
+    });
+
+    if (doctors.length === 0) {
+      return null;
+    }
+
+    // Kiểm tra từng bác sĩ xem có lịch trống không
+    for (const doctor of doctors) {
+      // Kiểm tra xem bác sĩ có đơn nghỉ phép trong ngày này không
+      const hasUnavailableTime = await DoctorUnavailableTime.findOne({
+        where: {
+          doctor_id: doctor.id,
+          status: "approved",
+          [Op.and]: [
+            {
+              unavailable_start_date: {
+                [Op.lte]: appointmentDate,
+              },
+            },
+            {
+              unavailable_end_date: {
+                [Op.gte]: appointmentDate,
+              },
+            },
+          ],
+        },
+      });
+
+      if (hasUnavailableTime) {
+        continue;
+      }
+
+      // Kiểm tra xem bác sĩ có lịch làm việc trong ngày và giờ này không
+      const doctorSchedule = await DoctorSchedule.findOne({
+        where: {
+          doctor_id: doctor.id,
+          hospital_id: hospitalId,
+          date: appointmentDate,
+        },
+        include: [
+          {
+            model: AppointmentSlot,
+            as: "appointmentSlots",
+            where: {
+              start_time: startTime,
+              end_time: endTime,
+              isBooked: false, // Slot phải còn trống
+              isDeleted: false, // Slot không bị xóa
+            },
+            required: true,
+          },
+        ],
+      });
+
+      if (doctorSchedule) {
+        return {
+          id: doctor?.id,
+          fullname: doctor?.user,
+          scheduleId: doctorSchedule?.id,
+          slotId: doctorSchedule?.appointmentSlots[0]?.id,
+        };
+      } else {
+        console.log(
+          `Bác sĩ ${doctor.user.fullname} không có lịch trống phù hợp`
+        );
+      }
+    }
+
+    // Không tìm thấy bác sĩ thay thế phù hợp
+    console.log("Không tìm thấy bác sĩ thay thế phù hợp");
+    return null;
+  } catch (error) {
+    console.error("Error finding replacement doctor:", error);
+    return null;
+  }
+};
+
 module.exports = {
   createDoctorUnavailableTime,
   appointmentByDoctorUnavailableTime,

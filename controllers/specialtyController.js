@@ -8,6 +8,118 @@ const { Op } = require("sequelize");
 const path = require("path");
 const { Doctor, DoctorSpecialty, Rating } = require("../models");
 const User = require("../models/userModel");
+const { OpenAI } = require("openai");
+const fs = require("fs");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Đường dẫn đến file lưu trữ từ khóa
+const keywordsFilePath = path.join(__dirname, "../data/specialtyKeywords.json");
+
+// Hàm tải từ khóa từ file
+const loadKeywords = () => {
+  try {
+    if (fs.existsSync(keywordsFilePath)) {
+      const data = fs.readFileSync(keywordsFilePath, "utf8");
+      return JSON.parse(data);
+    }
+    return {};
+  } catch (error) {
+    console.error("Lỗi khi đọc file từ khóa:", error);
+    return {};
+  }
+};
+
+// Hàm lưu từ khóa vào file
+const saveKeywords = (keywords) => {
+  try {
+    // Đảm bảo thư mục tồn tại
+    const dir = path.dirname(keywordsFilePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(
+      keywordsFilePath,
+      JSON.stringify(keywords, null, 2),
+      "utf8"
+    );
+  } catch (error) {
+    console.error("Lỗi khi lưu file từ khóa:", error);
+  }
+};
+
+// Hàm tạo từ khóa cho chuyên khoa
+const generateKeywordsForAI = async (specialty) => {
+  try {
+    const prompt = `Hãy liệt kê 10 triệu chứng hoặc từ khóa phổ biến liên quan đến chuyên khoa y tế "${
+      specialty.name
+    }". 
+    Mô tả chuyên khoa: "${specialty.description || ""}".
+    Chỉ trả về danh sách các từ khóa, mỗi từ khóa trên một dòng, không đánh số.`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "user", content: prompt },
+        {
+          role: "system",
+          content:
+            "Bạn là một trợ lý y tế chuyên nghiệp. Hãy liệt kê các triệu chứng và từ khóa y tế chính xác.",
+        },
+      ],
+      model: "gpt-4o-mini",
+    });
+
+    // Xử lý kết quả từ OpenAI
+    const response = completion.choices[0].message.content;
+    const keywords = response
+      .split("\n")
+      .map((keyword) => keyword.trim())
+      .filter((keyword) => keyword && !keyword.match(/^\d+\./)); // Loại bỏ dòng trống và số thứ tự
+
+    return keywords;
+  } catch (error) {
+    console.error(
+      `Lỗi khi tạo từ khóa cho chuyên khoa ${specialty.name}:`,
+      error
+    );
+    return [];
+  }
+};
+
+// Thêm vào cuối file, trước module.exports
+const generateKeywordsForSpecialty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Tìm chuyên khoa theo ID
+    const specialty = await Specialty.findByPk(id);
+    if (!specialty) {
+      return res.status(404).json({ message: "Chuyên khoa không tồn tại" });
+    }
+
+    // Tạo từ khóa cho chuyên khoa
+    const keywords = await generateKeywordsForAI(specialty);
+
+    if (keywords.length === 0) {
+      return res.status(400).json({ message: "Không thể tạo từ khóa" });
+    }
+
+    // Lưu từ khóa vào file
+    const currentKeywords = loadKeywords();
+    currentKeywords[specialty.name] = keywords;
+    saveKeywords(currentKeywords);
+
+    return res.status(200).json({
+      message: "Đã tạo từ khóa thành công",
+      keywords,
+    });
+  } catch (error) {
+    console.error("Lỗi khi tạo từ khóa:", error);
+    return res.status(500).json({ message: "Đã xảy ra lỗi khi tạo từ khóa" });
+  }
+};
 
 // Thêm chuyên khoa của hệ thống
 
@@ -36,6 +148,23 @@ const addSpecialty = async (req, res) => {
       description,
       slug,
     });
+
+    // Tự động tạo từ khóa cho chuyên khoa mới
+    try {
+      const keywords = await generateKeywordsForAI(newSpecialty);
+      if (keywords.length > 0) {
+        const currentKeywords = loadKeywords();
+        currentKeywords[newSpecialty.name] = keywords;
+        saveKeywords(currentKeywords);
+        console.log(
+          `Đã tạo ${keywords.length} từ khóa cho chuyên khoa ${newSpecialty.name}`
+        );
+      }
+    } catch (keywordError) {
+      console.error("Lỗi khi tạo từ khóa tự động:", keywordError);
+      // Không trả về lỗi, vẫn tiếp tục lưu chuyên khoa
+    }
+
     res.json({ newSpecialty });
     console.log(req.body);
   } catch (error) {
@@ -56,6 +185,9 @@ const updateSpecialty = async (req, res) => {
       return res.status(404).json({ message: "Chuyên khoa không tồn tại" });
     }
 
+    // Lưu tên cũ để kiểm tra thay đổi
+    const oldName = specialty.name;
+
     // Kiểm tra tên chuyên khoa đã tồn tại (trừ chính nó)
     if (name && name !== specialty.name) {
       const existingSpecialty = await Specialty.findOne({ where: { name } });
@@ -65,48 +197,89 @@ const updateSpecialty = async (req, res) => {
     }
 
     // Cập nhật dữ liệu
-    const updateData = {};
-    if (name) updateData.name = name;
-    if (description) updateData.description = description;
-    if (name) updateData.slug = slugify(name, { lower: true, strict: true });
-    if (file) updateData.photo = `/uploads/${file.filename}`;
+    let photoUrl = specialty.photo;
+    if (file) {
+      photoUrl = `/uploads/${file.filename}`;
+    }
 
-    await specialty.update(updateData);
+    const slug = name
+      ? slugify(name, { lower: true, strict: true })
+      : specialty.slug;
 
-    res.json({ updatedSpecialty: specialty });
+    const updatedSpecialty = await specialty.update({
+      name: name || specialty.name,
+      photo: photoUrl,
+      description: description || specialty.description,
+      slug,
+    });
+
+    // Nếu tên thay đổi, cập nhật từ khóa
+    if (name && name !== oldName) {
+      try {
+        const currentKeywords = loadKeywords();
+
+        // Nếu có từ khóa cho tên cũ, lưu lại
+        const oldKeywords = currentKeywords[oldName];
+
+        // Xóa từ khóa của tên cũ
+        if (oldKeywords) {
+          delete currentKeywords[oldName];
+        }
+
+        // Tạo từ khóa mới cho tên mới
+        const keywords = await generateKeywordsForAI(updatedSpecialty);
+        if (keywords.length > 0) {
+          currentKeywords[updatedSpecialty.name] = keywords;
+          saveKeywords(currentKeywords);
+          console.log(
+            `Đã cập nhật từ khóa cho chuyên khoa ${updatedSpecialty.name}`
+          );
+        }
+      } catch (keywordError) {
+        console.error("Lỗi khi cập nhật từ khóa:", keywordError);
+        // Không trả về lỗi, vẫn tiếp tục cập nhật chuyên khoa
+      }
+    }
+
+    res.json({ updatedSpecialty });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi khi cập nhật chuyên khoa" });
+    res.status(500).json({ message: "Failed to update specialty" });
   }
 };
+
 // Delete chuyên khoa của hệ thống
 const deleteSpecialty = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Tìm chuyên khoa
     const specialty = await Specialty.findByPk(id);
+
     if (!specialty) {
       return res.status(404).json({ message: "Chuyên khoa không tồn tại" });
     }
 
-    // Kiểm tra liên kết với HospitalSpecialty
-    const hospitalSpecialty = await HospitalSpecialty.findOne({
-      where: { specialtyId: id },
-    });
-    if (hospitalSpecialty) {
-      return res.status(400).json({
-        message: "Không thể xóa chuyên khoa vì đã có liên kết với cơ sở y tế",
-      });
-    }
+    // Lưu tên để xóa từ khóa
+    const specialtyName = specialty.name;
 
-    // Xóa chuyên khoa
     await specialty.destroy();
+
+    // Xóa từ khóa của chuyên khoa
+    try {
+      const currentKeywords = loadKeywords();
+      if (currentKeywords[specialtyName]) {
+        delete currentKeywords[specialtyName];
+        saveKeywords(currentKeywords);
+        console.log(`Đã xóa từ khóa của chuyên khoa ${specialtyName}`);
+      }
+    } catch (keywordError) {
+      console.error("Lỗi khi xóa từ khóa:", keywordError);
+      // Không trả về lỗi, vẫn tiếp tục xóa chuyên khoa
+    }
 
     res.json({ message: "Xóa chuyên khoa thành công" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi khi xóa chuyên khoa" });
+    res.status(500).json({ message: "Failed to delete specialty" });
   }
 };
 
@@ -304,4 +477,5 @@ module.exports = {
   getSpecialtyIdFilterList,
   getSpecialtyByHospitalId,
   getSpecialtyDetailOfHospital,
+  generateKeywordsForSpecialty,
 };

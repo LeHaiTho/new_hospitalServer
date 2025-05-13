@@ -536,11 +536,7 @@ const getAllDoctorSchedule = async (req, res) => {
           as: "hospital",
           attributes: ["id", "name"],
         },
-        {
-          model: Room,
-          as: "room",
-          attributes: ["id", "name"],
-        },
+
         {
           model: AppointmentSlot,
           as: "appointmentSlots",
@@ -621,6 +617,51 @@ const check = async (req, res) => {
     console.log(error);
   }
 };
+
+const getDoctorAllSchedules = async (req, res) => {
+  const { doctorId } = req.params;
+
+  try {
+    // Tìm bệnh viện do user quản lý
+    const hospital = await Hospital.findOne({
+      where: {
+        manager_id: req.user.id,
+      },
+    });
+
+    if (!hospital) {
+      return res
+        .status(404)
+        .json({ message: "Hospital not found for this manager." });
+    }
+
+    // Lấy tất cả lịch làm việc của bác sĩ tại bệnh viện này
+    const schedules = await DoctorSchedule.findAll({
+      where: {
+        doctor_id: doctorId,
+        hospital_id: hospital.id,
+        isDeleted: false,
+      },
+      include: [
+        {
+          model: AppointmentSlot,
+          as: "appointmentSlots",
+          attributes: ["id", "start_time", "end_time", "isBooked"],
+        },
+      ],
+      order: [
+        ["date", "ASC"],
+        ["start_time", "ASC"],
+      ],
+    });
+
+    res.status(200).json({ schedules });
+  } catch (error) {
+    console.error("Error getting doctor schedules:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   createDoctorSchedule,
   getAppointmentSlotsByDoctorAndDate,
@@ -632,4 +673,5 @@ module.exports = {
   createDoctorSchedule2,
   getAllDoctorSchedule,
   check,
+  getDoctorAllSchedules,
 };

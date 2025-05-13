@@ -10,6 +10,7 @@ const {
   createDoctorSchedule2,
   getAllDoctorSchedule,
   check,
+  getDoctorAllSchedules,
 } = require("../controllers/doctorScheduleController");
 const { protect } = require("../middlewares/authMiddleware");
 
@@ -31,4 +32,10 @@ router.get(
 );
 router.get("/get-all-schedule", protect, getAllDoctorSchedule);
 router.post("/create-schedule2", protect, createDoctorSchedule2);
+router.get(
+  "/doctor/:doctorId/get-all-schedules",
+  protect,
+  getDoctorAllSchedules
+);
+
 module.exports = router;

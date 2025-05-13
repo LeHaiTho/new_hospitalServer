@@ -5,6 +5,8 @@ const {
   getListSpecialtyOfHospital,
   addSpecialtyToHospital,
   getHospitalBySpecialtyAndDoctorId,
+  updateHospitalSpecialty,
+  deleteHospitalSpecialty,
 } = require("../controllers/hospitalSpecialtyController");
 const upload = require("../middlewares/uploadMiddleware");
 const { protect } = require("../middlewares/authMiddleware");
@@ -16,6 +18,13 @@ router.post(
   upload.single("image"),
   addHospitalSpecialty
 );
+router.put(
+  "/update/:id",
+  protect,
+  upload.single("image"),
+  updateHospitalSpecialty
+);
+router.delete("/delete/:id", protect, deleteHospitalSpecialty);
 router.get("/list", protect, getListHospitalSpecialties);
 router.get("/list-specialty-of-hospital", protect, getListSpecialtyOfHospital);
 router.post("/add-specialty-to-hospital", protect, addSpecialtyToHospital);

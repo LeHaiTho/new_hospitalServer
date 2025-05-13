@@ -33,6 +33,7 @@ const createAppointment = async (req, res) => {
     selectedSpecialty,
     paymentMethod,
     isDoctorSpecial,
+    isZaloPay,
   } = req.body;
   console.log(selectedHospital);
   try {
@@ -49,6 +50,12 @@ const createAppointment = async (req, res) => {
     });
     let newAppointment;
 
+    let appointmentStatus = "confirmed";
+
+    if (paymentMethod === "e-wallet" && isZaloPay) {
+      appointmentStatus = "pending";
+    }
+
     if (paymentMethod === "e-wallet") {
       newAppointment = await Appointment.create({
         appointment_code: appointmentCode,
@@ -61,7 +68,7 @@ const createAppointment = async (req, res) => {
         appointmentSlot_id: slot.id,
         appointment_date: selectedDate,
         payment_method: paymentMethod,
-        status: "confirmed",
+        status: appointmentStatus,
         price:
           selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
           doctor.consultation_fee[0],
@@ -81,7 +88,7 @@ const createAppointment = async (req, res) => {
         appointmentSlot_id: slot.id,
         appointment_date: selectedDate,
         payment_method: paymentMethod,
-        status: "confirmed",
+        status: appointmentStatus,
         price:
           selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
           doctor.consultation_fee[0],
@@ -155,6 +162,10 @@ const createAppointment = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+    res.status(500).json({
+      message: "Failed to create appointment",
+      error: error.message,
+    });
   }
 };
 
@@ -774,9 +785,9 @@ const getAllAppointmentsByHospitalId = async (req, res) => {
 const updateAppointmentStatusAfterPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_status } = req.body;
+    const { payment_status, status } = req.body;
     const updatedAppointment = await Appointment.update(
-      { payment_status },
+      { payment_status, status },
       { where: { id } }
     );
     res.status(200).json({
@@ -1236,6 +1247,67 @@ const deleteFamilyMember = async (req, res) => {
   }
 };
 
+// Thêm API mới để cập nhật trạng thái thanh toán
+const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_status } = req.body;
+
+    // Cập nhật trạng thái thanh toán
+    await Appointment.update(
+      {
+        payment_status,
+        status: "confirmed", // Cập nhật trạng thái lịch hẹn thành confirmed
+      },
+      { where: { id } }
+    );
+
+    // Lấy thông tin lịch hẹn
+    const appointment = await Appointment.findByPk(id, {
+      include: [
+        {
+          model: Hospital,
+          as: "hospital",
+        },
+      ],
+    });
+
+    // Tạo thông báo
+    if (appointment) {
+      await createNewAppointmentNotification(
+        appointment.user_id,
+        appointment.id,
+        appointment.hospital.name,
+        moment(appointment.appointment_date).format("DD/MM/YYYY")
+      );
+
+      // Tạo lịch nhắc nhở
+      const now = moment().tz("Asia/Bangkok").toDate();
+      const reminderTime = [
+        moment(now).add(2, "minutes").toDate(),
+        moment(now).add(3, "minutes").toDate(),
+      ];
+
+      reminderTime.forEach(async (time) => {
+        await ReminderAppointment.create({
+          appointment_id: appointment.id,
+          reminder_time: time,
+        });
+      });
+    }
+
+    res.status(200).json({
+      message: "Payment status updated successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Failed to update payment status",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createAppointment,
   getAppointmentsByUserId,
@@ -1252,4 +1324,5 @@ module.exports = {
   updateAppointmentStatusAfterPayment,
   deleteFamilyMember,
   getHistoryBookingOfHospital,
+  updatePaymentStatus,
 };

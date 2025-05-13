@@ -15,6 +15,7 @@ const {
   updateAppointmentStatusAfterPayment,
   deleteFamilyMember,
   getHistoryBookingOfHospital,
+  updatePaymentStatus,
 } = require("../controllers/apppointmentController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -63,4 +64,5 @@ router.patch(
   updateAppointmentStatusAfterPayment
 );
 router.delete("/:id", protect, deleteFamilyMember);
+router.patch("/update-payment-status/:id", protect, updatePaymentStatus);
 module.exports = router;

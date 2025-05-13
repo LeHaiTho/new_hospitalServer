@@ -12,6 +12,7 @@ const {
   getSpecialtyIdFilterList,
   getSpecialtyByHospitalId,
   getSpecialtyDetailOfHospital,
+  generateKeywordsForSpecialty,
 } = require("../controllers/specialtyController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -32,4 +33,6 @@ router.delete("/delete/:id", deleteSpecialty);
 router.get("/list-to-select", getListSpecialtyOnlyIdAndName);
 router.get("/:specialtyId/entities", getSpecialtyIdFilterList);
 router.get("/detail", getSpecialtyDetailOfHospital);
+router.post("/generate-keywords/:id", generateKeywordsForSpecialty);
+
 module.exports = router;

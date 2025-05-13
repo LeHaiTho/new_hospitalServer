@@ -431,7 +431,19 @@ const getHospitalConditions = async (req, res) => {
   }
   try {
     const hospital = await Hospital.findAll({
-      where: condition,
+      where: { ...condition, isActive: true },
+      include: [
+        {
+          model: User,
+          as: "manager",
+          attributes: { exclude: ["password"] },
+          where: {
+            isActivated: true,
+            isDeleted: false,
+            isFirstLogin: false,
+          },
+        },
+      ],
     });
     res.status(200).json({ hospital });
   } catch (error) {
