@@ -122,8 +122,8 @@ const updateHospitalSpecialty = async (req, res) => {
   }
 };
 
-// Xóa chuyên khoa của bệnh viện
-const deleteHospitalSpecialty = async (req, res) => {
+// Thêm hàm softDeleteHospitalSpecialty
+const softDeleteHospitalSpecialty = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -152,7 +152,13 @@ const deleteHospitalSpecialty = async (req, res) => {
       }
     }
 
-    await hospitalSpecialty.destroy();
+    // Thay vì xóa bản ghi, chỉ đặt các trường thành null
+    await hospitalSpecialty.update({
+      name: null,
+      description: null,
+      consultation_fee: 0,
+      image: null,
+    });
 
     res.status(200).json({ message: "Xóa chuyên khoa thành công" });
   } catch (error) {
@@ -189,6 +195,7 @@ const addSpecialtyToHospital = async (req, res) => {
   }
 };
 
+// Cập nhật hàm getListHospitalSpecialties để lọc ra các chuyên khoa chưa bị xóa mềm
 const getListHospitalSpecialties = async (req, res) => {
   try {
     if (req.user) {
@@ -208,6 +215,7 @@ const getListHospitalSpecialties = async (req, res) => {
     }
   } catch (error) {
     console.log(error);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách chuyên khoa" });
   }
 };
 
@@ -302,5 +310,5 @@ module.exports = {
   addSpecialtyToHospital,
   getHospitalBySpecialtyAndDoctorId,
   updateHospitalSpecialty,
-  deleteHospitalSpecialty,
+  softDeleteHospitalSpecialty,
 };

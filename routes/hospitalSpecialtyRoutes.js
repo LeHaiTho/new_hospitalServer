@@ -6,7 +6,7 @@ const {
   addSpecialtyToHospital,
   getHospitalBySpecialtyAndDoctorId,
   updateHospitalSpecialty,
-  deleteHospitalSpecialty,
+  softDeleteHospitalSpecialty,
 } = require("../controllers/hospitalSpecialtyController");
 const upload = require("../middlewares/uploadMiddleware");
 const { protect } = require("../middlewares/authMiddleware");
@@ -24,7 +24,7 @@ router.put(
   upload.single("image"),
   updateHospitalSpecialty
 );
-router.delete("/delete/:id", protect, deleteHospitalSpecialty);
+router.delete("/delete/:id", protect, softDeleteHospitalSpecialty);
 router.get("/list", protect, getListHospitalSpecialties);
 router.get("/list-specialty-of-hospital", protect, getListSpecialtyOfHospital);
 router.post("/add-specialty-to-hospital", protect, addSpecialtyToHospital);
@@ -32,4 +32,5 @@ router.get(
   "/:specialtyId/:doctorId/get-hospital-by-specialty-and-doctor-id",
   getHospitalBySpecialtyAndDoctorId
 );
+router.patch("/soft-delete/:id", protect, softDeleteHospitalSpecialty);
 module.exports = router;
