@@ -21,7 +21,6 @@ const {
   DoctorHospital,
   DoctorSpecialty,
 } = require("../models");
-const { createPayment } = require("./paymentController");
 const createAppointment = async (req, res) => {
   const {
     profile,
@@ -34,8 +33,8 @@ const createAppointment = async (req, res) => {
     paymentMethod,
     isDoctorSpecial,
     isZaloPay,
+    consultationFee,
   } = req.body;
-  console.log(selectedHospital);
   try {
     const generateAppointmentCode = async () => {
       const dateStr = new Date().getFullYear().toString();
@@ -69,9 +68,9 @@ const createAppointment = async (req, res) => {
         appointment_date: selectedDate,
         payment_method: paymentMethod,
         status: appointmentStatus,
-        price:
-          selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
-          doctor.consultation_fee[0],
+        price: consultationFee,
+        // selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
+        // doctor.consultation_fee[0],
         payment_status: "pending",
         isDoctorSpecial: isDoctorSpecial,
       });
@@ -89,9 +88,9 @@ const createAppointment = async (req, res) => {
         appointment_date: selectedDate,
         payment_method: paymentMethod,
         status: appointmentStatus,
-        price:
-          selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
-          doctor.consultation_fee[0],
+        price: consultationFee,
+        // selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
+        // doctor.consultation_fee[0],
         payment_status: "pending",
         isDoctorSpecial: isDoctorSpecial,
       });
@@ -110,6 +109,8 @@ const createAppointment = async (req, res) => {
       );
     }
 
+    let reminderTime;
+
     if (slot.id) {
       await AppointmentSlot.update(
         {
@@ -126,13 +127,15 @@ const createAppointment = async (req, res) => {
           id: slot.id,
         },
       });
+
+      // Tính thời gian nhắc nhở
+      const now = moment().tz("Asia/Bangkok").toDate();
+      reminderTime = [
+        moment(now).add(1, "minutes").toDate(),
+        moment(now).add(3, "minutes").toDate(),
+      ];
+      // reminderTime = calculateReminderTimes(selectedDate, slotTime.start_time);
     }
-    const now = moment().tz("Asia/Bangkok").toDate();
-    //   // thời gian gửi nhắc nhở
-    const reminderTime = [
-      moment(now).add(2, "minutes").toDate(),
-      moment(now).add(3, "minutes").toDate(),
-    ];
 
     const hospitalName = await Hospital.findOne({
       where: {
@@ -140,21 +143,20 @@ const createAppointment = async (req, res) => {
       },
     });
 
-    if (paymentMethod === "cash") {
+    if (paymentMethod === "cash" && reminderTime) {
       await createNewAppointmentNotification(
         req.user.id,
         newAppointment.id,
         hospitalName.name,
         moment(selectedDate).format("DD/MM/YYYY")
       );
-    }
-
-    reminderTime.forEach(async (time) => {
-      await ReminderAppointment.create({
-        appointment_id: newAppointment.id,
-        reminder_time: time,
+      reminderTime.forEach(async (time) => {
+        await ReminderAppointment.create({
+          appointment_id: newAppointment.id,
+          reminder_time: time,
+        });
       });
-    });
+    }
 
     res.status(200).json({
       message: "Appointment created successfully",
@@ -790,6 +792,52 @@ const updateAppointmentStatusAfterPayment = async (req, res) => {
       { payment_status, status },
       { where: { id } }
     );
+    const appointment = await Appointment.findOne({
+      where: { id },
+      include: [
+        {
+          model: Hospital,
+          as: "hospital",
+        },
+      ],
+    });
+    if (appointment) {
+      await createNewAppointmentNotification(
+        appointment.user_id,
+        appointment.id,
+        appointment.hospital.name,
+        moment(appointment.appointment_date).format("DD/MM/YYYY")
+      );
+      // Tạo lịch nhắc nhở
+      const now = moment().tz("Asia/Bangkok").toDate();
+      const reminderTime = [
+        moment(now).add(1, "minutes").toDate(),
+        moment(now).add(3, "minutes").toDate(),
+      ];
+
+      // Lấy thông tin về thời gian của lịch hẹn
+      const appointmentSlotInfo = await AppointmentSlot.findOne({
+        where: { id: appointment.appointmentSlot_id },
+      });
+
+      const doctorScheduleInfo = await DoctorSchedule.findOne({
+        where: { id: appointment.doctorSchedule_id },
+      });
+
+      // Tính thời gian nhắc nhở dựa trên ngày và giờ hẹn
+      // const reminderTime = calculateReminderTimes(
+      //   doctorScheduleInfo.date,
+      //   appointmentSlotInfo.start_time
+      // );
+
+      reminderTime.forEach(async (time) => {
+        await ReminderAppointment.create({
+          appointment_id: appointment.id,
+          reminder_time: time,
+        });
+      });
+    }
+
     res.status(200).json({
       message: "Update appointment status successfully",
     });
@@ -1137,12 +1185,24 @@ const changeAppointment = async (req, res) => {
       { status: "updated" },
       { where: { id: original_appointment_id } }
     );
+
+    // Lấy thông tin về thời gian của lịch hẹn
+    const appointmentSlotInfo = await AppointmentSlot.findOne({
+      where: { id: appointmentSlot_id },
+    });
+
+    // Tính thời gian nhắc nhở dựa trên ngày và giờ hẹn
+    // Tạo lịch nhắc nhở
     const now = moment().tz("Asia/Bangkok").toDate();
-    //   // thời gian gửi nhắc nhở
     const reminderTime = [
       moment(now).add(1, "minutes").toDate(),
       moment(now).add(3, "minutes").toDate(),
     ];
+
+    // const reminderTime = calculateReminderTimes(
+    //   appointment_date,
+    //   appointmentSlotInfo.start_time
+    // );
 
     const hospitalName = await Hospital.findOne({
       where: {
@@ -1281,12 +1341,20 @@ const updatePaymentStatus = async (req, res) => {
         moment(appointment.appointment_date).format("DD/MM/YYYY")
       );
 
-      // Tạo lịch nhắc nhở
-      const now = moment().tz("Asia/Bangkok").toDate();
-      const reminderTime = [
-        moment(now).add(2, "minutes").toDate(),
-        moment(now).add(3, "minutes").toDate(),
-      ];
+      // Lấy thông tin về thời gian của lịch hẹn
+      const appointmentSlotInfo = await AppointmentSlot.findOne({
+        where: { id: appointment.appointmentSlot_id },
+      });
+
+      const doctorScheduleInfo = await DoctorSchedule.findOne({
+        where: { id: appointment.doctorSchedule_id },
+      });
+
+      // Tính thời gian nhắc nhở dựa trên ngày và giờ hẹn
+      const reminderTime = calculateReminderTimes(
+        doctorScheduleInfo.date,
+        appointmentSlotInfo.start_time
+      );
 
       reminderTime.forEach(async (time) => {
         await ReminderAppointment.create({
@@ -1305,6 +1373,47 @@ const updatePaymentStatus = async (req, res) => {
       message: "Failed to update payment status",
       error: error.message,
     });
+  }
+};
+
+// Tạo hàm trợ giúp để tính thời gian nhắc nhở
+const calculateReminderTimes = (appointmentDate, appointmentTime) => {
+  try {
+    // Đảm bảo appointmentDate là đối tượng Date
+    let dateObj;
+    if (appointmentDate instanceof Date) {
+      dateObj = appointmentDate;
+    } else if (typeof appointmentDate === "string") {
+      dateObj = new Date(appointmentDate);
+    } else {
+      // Trường hợp khác, ví dụ: moment object
+      dateObj = moment(appointmentDate).toDate();
+    }
+
+    // Format ngày tháng thành chuỗi YYYY-MM-DD
+    const dateStr = moment(dateObj).format("YYYY-MM-DD");
+
+    // Kết hợp ngày và giờ hẹn
+    const appointmentDateTime = moment(
+      `${dateStr} ${appointmentTime}`,
+      "YYYY-MM-DD HH:mm:ss"
+    );
+
+    // Nhắc trước 1 ngày
+    const oneDayBefore = moment(appointmentDateTime).subtract(1, "days");
+
+    // Nhắc trước 1 giờ
+    const oneHourBefore = moment(appointmentDateTime).subtract(1, "hour");
+
+    return [oneDayBefore.toDate(), oneHourBefore.toDate()];
+  } catch (error) {
+    console.error("Error calculating reminder times:", error);
+    // Fallback to simple reminders if there's an error
+    const now = moment().tz("Asia/Bangkok");
+    return [
+      now.clone().add(1, "day").toDate(),
+      now.clone().add(2, "days").toDate(),
+    ];
   }
 };
 
