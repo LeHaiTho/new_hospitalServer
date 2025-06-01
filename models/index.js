@@ -30,6 +30,12 @@ const Message = require("./messageModel");
 const Package = require("./packageModel");
 const Subscription = require("./subscriptionModel");
 const ChatRoom = require("./chatRoomModel");
+
+// New detailed exam models
+const DetailedExamResult = require("./detailedExamResultModel");
+const TestResult = require("./testResultModel");
+const DetailedPrescription = require("./detailedPrescriptionModel");
+
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
 
 Hospital.belongsTo(User, { foreignKey: "manager_id", as: "manager" });
@@ -344,6 +350,54 @@ Doctor.hasMany(ChatRoom, { foreignKey: "doctor_id", as: "chatRooms" });
 User.hasMany(ChatRoom, { foreignKey: "user_id", as: "chatRooms" });
 ChatRoom.belongsTo(User, { foreignKey: "user_id", as: "user" });
 
+// Detailed Exam Result relationships
+DetailedExamResult.belongsTo(Appointment, {
+  foreignKey: "appointment_id",
+  as: "appointment",
+});
+Appointment.hasOne(DetailedExamResult, {
+  foreignKey: "appointment_id",
+  as: "detailedExamResult",
+});
+
+DetailedExamResult.belongsTo(Doctor, {
+  foreignKey: "doctor_id",
+  as: "doctor",
+});
+Doctor.hasMany(DetailedExamResult, {
+  foreignKey: "doctor_id",
+  as: "detailedExamResults",
+});
+
+DetailedExamResult.belongsTo(Hospital, {
+  foreignKey: "hospital_id",
+  as: "hospital",
+});
+Hospital.hasMany(DetailedExamResult, {
+  foreignKey: "hospital_id",
+  as: "detailedExamResults",
+});
+
+// Test Results relationships
+TestResult.belongsTo(DetailedExamResult, {
+  foreignKey: "detailed_exam_result_id",
+  as: "detailedExamResult",
+});
+DetailedExamResult.hasMany(TestResult, {
+  foreignKey: "detailed_exam_result_id",
+  as: "testResults",
+});
+
+// Detailed Prescription relationships
+DetailedPrescription.belongsTo(DetailedExamResult, {
+  foreignKey: "detailed_exam_result_id",
+  as: "detailedExamResult",
+});
+DetailedExamResult.hasMany(DetailedPrescription, {
+  foreignKey: "detailed_exam_result_id",
+  as: "detailedPrescriptions",
+});
+
 module.exports = {
   Doctor,
   DoctorSpecialty,
@@ -351,12 +405,15 @@ module.exports = {
   HospitalSpecialty,
   Role,
   Specialty,
+  User,
+  DoctorSchedule,
   DoctorHospital,
   WorkingDay,
   TimeSlot,
   AppointmentSlot,
   Appointment,
   FamilyMember,
+  Staff,
   PushToken,
   Notification,
   Rating,
@@ -374,4 +431,7 @@ module.exports = {
   Package,
   Subscription,
   ChatRoom,
+  DetailedExamResult,
+  TestResult,
+  DetailedPrescription,
 };

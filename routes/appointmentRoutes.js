@@ -16,9 +16,14 @@ const {
   deleteFamilyMember,
   getHistoryBookingOfHospital,
   updatePaymentStatus,
+  getAppointmentsByDoctorId,
 } = require("../controllers/apppointmentController");
 
-const { protect, restrictTo } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  restrictTo,
+  requireRole,
+} = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 router.post("/create-appointment", protect, createAppointment);
@@ -27,6 +32,12 @@ router.get(
   getAppointmentByIdByHospital
 );
 router.get("/get-appointment-by-user-id", protect, getAppointmentsByUserId);
+router.get(
+  "/get-appointments-by-doctor/:doctorId?",
+  protect,
+  requireRole(["doctor"]),
+  getAppointmentsByDoctorId
+);
 
 router.get(
   "/get-appointment-by-hospital-id",

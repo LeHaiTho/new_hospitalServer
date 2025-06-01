@@ -35,6 +35,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const chatBotRoutes = require("./routes/chatBotRoutes");
+const detailedExamResultRoutes = require("./routes/detailedExamResultRoutes");
 const { startCron } = require("./cron");
 const app = express();
 
@@ -75,6 +76,7 @@ app.use("/messages", messageRoutes);
 app.use("/search", searchRoutes);
 app.use("/subscriptions", subscriptionRoutes);
 app.use("/chatbot", chatBotRoutes);
+app.use("/detailed-exam-results", detailedExamResultRoutes);
 // Start the server
 // syncDatabase()
 //   .then(() => {
