@@ -6,8 +6,6 @@ const {
   getDetailedExamResultByAppointmentCode,
   getDoctorDetailedExamResults,
   getPatientExamHistory,
-  updateDetailedExamResult,
-  deleteDetailedExamResult,
 } = require("../controllers/detailedExamResultController");
 const {
   authenticateToken,
@@ -45,22 +43,6 @@ router.post(
   authenticateToken,
   requireRole(["doctor", "staff"]), // Doctors and staff can view
   getPatientExamHistory
-);
-
-// Update detailed exam result (only if not completed)
-router.put(
-  "/:id",
-  authenticateToken,
-  requireRole(["doctor"]), // Only doctors can update
-  updateDetailedExamResult
-);
-
-// Delete detailed exam result (soft delete)
-router.delete(
-  "/:id",
-  authenticateToken,
-  requireRole(["doctor"]), // Only doctors can delete
-  deleteDetailedExamResult
 );
 
 module.exports = router;

@@ -631,87 +631,10 @@ const getPatientExamHistory = async (req, res) => {
   }
 };
 
-// Update detailed exam result (only if not completed)
-const updateDetailedExamResult = async (req, res) => {
-  const transaction = await DetailedExamResult.sequelize.transaction();
-
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const detailedExamResult = await DetailedExamResult.findByPk(id);
-
-    if (!detailedExamResult) {
-      await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy kết quả khám bệnh",
-      });
-    }
-
-    if (detailedExamResult.is_completed) {
-      await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Không thể chỉnh sửa kết quả khám bệnh đã hoàn thành",
-      });
-    }
-
-    await detailedExamResult.update(updateData, { transaction });
-    await transaction.commit();
-
-    res.status(200).json({
-      success: true,
-      message: "Cập nhật kết quả khám bệnh thành công",
-      data: detailedExamResult,
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Error updating detailed exam result:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi server khi cập nhật kết quả khám bệnh",
-      error: error.message,
-    });
-  }
-};
-
-// Delete detailed exam result (soft delete)
-const deleteDetailedExamResult = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const detailedExamResult = await DetailedExamResult.findByPk(id);
-
-    if (!detailedExamResult) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy kết quả khám bệnh",
-      });
-    }
-
-    await detailedExamResult.update({ is_deleted: true });
-
-    res.status(200).json({
-      success: true,
-      message: "Xóa kết quả khám bệnh thành công",
-    });
-  } catch (error) {
-    console.error("Error deleting detailed exam result:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi server khi xóa kết quả khám bệnh",
-      error: error.message,
-    });
-  }
-};
-
 module.exports = {
   upload,
   createDetailedExamResult,
   getDetailedExamResultByAppointmentCode,
   getDoctorDetailedExamResults,
   getPatientExamHistory,
-  updateDetailedExamResult,
-  deleteDetailedExamResult,
 };
