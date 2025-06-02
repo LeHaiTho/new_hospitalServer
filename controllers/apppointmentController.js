@@ -71,7 +71,7 @@ const createAppointment = async (req, res) => {
         price: consultationFee,
         // selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
         // doctor.consultation_fee[0],
-        payment_status: "pending",
+        payment_status: "confirmed",
         isDoctorSpecial: isDoctorSpecial,
       });
     }

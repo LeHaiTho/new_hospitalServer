@@ -26,7 +26,7 @@ const createPayment = async (req, res) => {
     embed_data: JSON.stringify(embed_data),
     amount: appointment.amount,
     description: `Thanh toán lịch hẹn #${transID}`,
-    callback_url: `https://973c-2001-ee0-51f2-a70-5cc7-9c54-1d51-2b39.ngrok-free.app/payments/callback`,
+    callback_url: `https://236c-2001-ee0-51f3-7930-a94a-b975-ff41-184.ngrok-free.app/payments/callback`,
   };
 
   const data =
