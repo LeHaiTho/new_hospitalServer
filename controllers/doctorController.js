@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { HospitalSpecialty, Hospital, Specialty, Rating } = require("../models");
 const Sequelize = require("sequelize");
+const { Op } = require("sequelize");
 
 const createDoctor = async (req, res) => {
   const t = await sequelize.transaction();
@@ -30,16 +31,6 @@ const createDoctor = async (req, res) => {
     const file = req.file || null;
     const imageUrl = file ? `/uploads/${file.filename}` : null;
 
-    // Kiểm tra xem bác sĩ đã tồn tại chưa
-    let doctor = await User.findOne({
-      // where: { certificate_id: licenseCode },
-      where: { email: email, username: email },
-    });
-
-    if (doctor) {
-      return res.status(500).json({ message: "Tài khoản bác sĩ đã tồn tại!" });
-    }
-
     // Bệnh viện hiện tại
     const hospital = await Hospital.findOne({
       where: {
@@ -47,8 +38,51 @@ const createDoctor = async (req, res) => {
       },
     });
 
-    // Nếu bác sĩ chưa tồn tại, tạo tài khoản và thông tin bác sĩ mới
-    if (!doctor) {
+    // Đầu tiên check xem bác sĩ với license code đã tồn tại chưa
+    let doctor = await Doctor.findOne({
+      where: { certificate_id: licenseCode },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+      ],
+    });
+
+    // Nếu bác sĩ với license code đã tồn tại
+    if (doctor) {
+      // Kiểm tra xem bác sĩ đã làm việc tại bệnh viện này chưa
+      const existingDoctorHospital = await DoctorHospital.findOne({
+        where: { doctor_id: doctor.id, hospital_id: hospital.id },
+        transaction: t,
+      });
+
+      if (!existingDoctorHospital) {
+        // Thêm bác sĩ vào bệnh viện mới
+        await DoctorHospital.create(
+          {
+            doctor_id: doctor.id,
+            hospital_id: hospital.id,
+          },
+          { transaction: t }
+        );
+      }
+    } else {
+      // Nếu license code chưa tồn tại, check email/username
+      const existingUser = await User.findOne({
+        where: {
+          [Op.or]: [{ email: email }, { username: email }],
+        },
+      });
+
+      if (existingUser) {
+        await t.rollback();
+        return res
+          .status(500)
+          .json({ message: "Tài khoản bác sĩ đã tồn tại!" });
+      }
+
+      // Tạo tài khoản và thông tin bác sĩ mới
       const hashedPassword = await bcrypt.hash(email, 10);
       const role = await Role.findOne({
         where: {
@@ -76,20 +110,12 @@ const createDoctor = async (req, res) => {
         {
           description,
           user_id: newAccount.id,
-          // certificate_id: licenseCode,
-          certificate_id: null,
+          certificate_id: licenseCode,
         },
         { transaction: t }
       );
-    }
 
-    // Kiểm tra và thêm quan hệ bác sĩ - bệnh viện
-    const existingDoctorHospital = await DoctorHospital.findOne({
-      where: { doctor_id: doctor.id, hospital_id: hospital.id },
-      transaction: t,
-    });
-
-    if (!existingDoctorHospital) {
+      // Thêm quan hệ bác sĩ - bệnh viện
       await DoctorHospital.create(
         {
           doctor_id: doctor.id,
@@ -103,7 +129,6 @@ const createDoctor = async (req, res) => {
     const specialtyIds = specialty.split(",").map((id) => parseInt(id));
     const hospitalSpecialties = await HospitalSpecialty.findAll({
       where: { specialty_id: specialtyIds, hospital_id: hospital.id },
-
       transaction: t,
     });
 
@@ -113,7 +138,6 @@ const createDoctor = async (req, res) => {
           doctor_id: doctor.id,
           hospital_specialty_id: hospitalSpecialty.id,
         },
-
         transaction: t,
       });
 
@@ -185,8 +209,7 @@ const updateDoctor = async (req, res) => {
     await Doctor.update(
       {
         description,
-        // certificate_id: licenseCode,
-        certificate_id: null,
+        certificate_id: licenseCode,
       },
       { where: { id }, transaction: t }
     );
@@ -515,7 +538,7 @@ const getDoctorOfHospital = async (req, res) => {
       description: item.doctor.description,
       gender: item.doctor.user.gender,
       birthday: item.doctor.user.date_of_birth,
-      // licenseCode: item.doctor.certificate_id,
+      licenseCode: item.doctor.certificate_id,
       consultation_fee: item.doctor.doctorSpecialty.map(
         (specialty) => specialty.consultation_fee
       ),
@@ -540,8 +563,6 @@ const getDoctorOfHospital = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-const { Op } = require("sequelize");
 
 const getAllDoctorAdmin = async (req, res) => {
   try {
@@ -626,7 +647,7 @@ const getAllDoctorAdmin = async (req, res) => {
       description: doctor.description,
       gender: doctor.user.gender,
       birthday: doctor.user.date_of_birth,
-      // licenseCode: doctor.certificate_id,
+      licenseCode: doctor.certificate_id,
       consultation_fee: doctor.doctorSpecialty.map(
         (specialty) => specialty.consultation_fee
       ),
@@ -843,7 +864,7 @@ const getDoctorByLicenseCode = async (req, res) => {
         email: doctor.user.email,
         avatar: doctor.user.avatar,
         description: doctor.description,
-        // certificate_id: doctor.certificate_id,
+        certificate_id: doctor.certificate_id,
         certificate_id: null,
         gender: doctor.user.gender,
         birthday: doctor.user.date_of_birth,

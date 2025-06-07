@@ -98,7 +98,7 @@ const server = http.createServer(app);
 socket(server, process.env.JWT_SECRET);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  startCron();
+server.listen(PORT, async () => {
+  await startCron();
   console.log(`Server listening on ${PORT}`);
 });
