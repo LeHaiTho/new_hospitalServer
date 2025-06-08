@@ -178,7 +178,7 @@ const updateDoctor = async (req, res) => {
       consultation_fee,
     } = req.body;
     const file = req.file || null;
-    const imageUrl = file ? `/Uploads/${file.filename}` : undefined;
+    const imageUrl = file ? `/uploads/${file.filename}` : undefined;
 
     // Tìm bác sĩ
     const doctor = await Doctor.findOne({
@@ -209,7 +209,7 @@ const updateDoctor = async (req, res) => {
     await Doctor.update(
       {
         description,
-        certificate_id: licenseCode,
+        certificate_id: licenseCode || doctor.certificate_id,
       },
       { where: { id }, transaction: t }
     );
@@ -487,8 +487,8 @@ const getDoctorOfHospital = async (req, res) => {
         {
           model: Doctor,
           as: "doctor",
-          // attributes: ["id", "description", "user_id", "certificate_id"],
-          attributes: ["id", "description", "user_id"],
+          attributes: ["id", "description", "user_id", "certificate_id"],
+          // attributes: ["id", "description", "user_id"],
           include: [
             {
               model: User,
