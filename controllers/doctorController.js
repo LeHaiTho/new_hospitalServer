@@ -384,91 +384,91 @@ const getAllDoctor = async (req, res) => {
 };
 
 // lọc bác sĩ
-const filterDoctor = async (req, res) => {
-  const { hospital_id } = req.query; // Lấy query param `hospital_id`
+// const filterDoctor = async (req, res) => {
+//   const { hospital_id } = req.query; // Lấy query param `hospital_id`
 
-  try {
-    // Điều kiện lọc dựa trên `hospital_id`
-    const whereCondition = hospital_id
-      ? { "$doctorSpecialty.hospitalSpecialty.hospital_id$": hospital_id }
-      : {};
+//   try {
+//     // Điều kiện lọc dựa trên `hospital_id`
+//     const whereCondition = hospital_id
+//       ? { "$doctorSpecialty.hospitalSpecialty.hospital_id$": hospital_id }
+//       : {};
 
-    const doctors = await Doctor.findAll({
-      where: whereCondition,
-      include: [
-        {
-          model: User,
-          as: "user",
-        },
-        {
-          model: DoctorSpecialty,
-          as: "doctorSpecialty",
-          include: [
-            {
-              model: HospitalSpecialty,
-              as: "hospitalSpecialty",
-              include: [
-                {
-                  model: Specialty,
-                  as: "specialty",
-                },
-              ],
-            },
-          ],
-        },
-        {
-          model: Rating,
-          as: "ratings",
-          attributes: ["id", "rating", "comment", "createdAt"],
-          order: [["createdAt", "DESC"]],
-        },
-      ],
-    });
+//     const doctors = await Doctor.findAll({
+//       where: whereCondition,
+//       include: [
+//         {
+//           model: User,
+//           as: "user",
+//         },
+//         {
+//           model: DoctorSpecialty,
+//           as: "doctorSpecialty",
+//           include: [
+//             {
+//               model: HospitalSpecialty,
+//               as: "hospitalSpecialty",
+//               include: [
+//                 {
+//                   model: Specialty,
+//                   as: "specialty",
+//                 },
+//               ],
+//             },
+//           ],
+//         },
+//         {
+//           model: Rating,
+//           as: "ratings",
+//           attributes: ["id", "rating", "comment", "createdAt"],
+//           order: [["createdAt", "DESC"]],
+//         },
+//       ],
+//     });
 
-    // Xử lý danh sách bác sĩ và các thông tin liên quan
-    const doctorList = doctors.map((doctor) => {
-      const ratings = doctor.ratings;
-      const totalComments = ratings.length;
-      const averageRating =
-        totalComments > 0
-          ? ratings.reduce((acc, rating) => acc + rating.rating, 0) /
-            totalComments
-          : 0;
-      return {
-        id: doctor.id,
-        fullname: doctor.user.fullname,
-        email: doctor.user.email,
-        avatar: doctor.user.avatar,
-        // description: doctor.description,
-        consultation_fee: doctor.doctorSpecialty.map(
-          (specialty) => specialty.consultation_fee
-        ),
-        specialties: Array.from(
-          new Map(
-            doctor.doctorSpecialty.map((specialty) => [
-              specialty.hospitalSpecialty.specialty_id,
-              {
-                id: specialty.hospitalSpecialty.specialty_id,
-                name: specialty.hospitalSpecialty.specialty.name,
-              },
-            ])
-          ).values()
-        ),
-        averageRating: averageRating.toFixed(1),
-        totalComments,
-      };
-    });
+//     // Xử lý danh sách bác sĩ và các thông tin liên quan
+//     const doctorList = doctors.map((doctor) => {
+//       const ratings = doctor.ratings;
+//       const totalComments = ratings.length;
+//       const averageRating =
+//         totalComments > 0
+//           ? ratings.reduce((acc, rating) => acc + rating.rating, 0) /
+//             totalComments
+//           : 0;
+//       return {
+//         id: doctor.id,
+//         fullname: doctor.user.fullname,
+//         email: doctor.user.email,
+//         avatar: doctor.user.avatar,
+//         // description: doctor.description,
+//         consultation_fee: doctor.doctorSpecialty.map(
+//           (specialty) => specialty.consultation_fee
+//         ),
+//         specialties: Array.from(
+//           new Map(
+//             doctor.doctorSpecialty.map((specialty) => [
+//               specialty.hospitalSpecialty.specialty_id,
+//               {
+//                 id: specialty.hospitalSpecialty.specialty_id,
+//                 name: specialty.hospitalSpecialty.specialty.name,
+//               },
+//             ])
+//           ).values()
+//         ),
+//         averageRating: averageRating.toFixed(1),
+//         totalComments,
+//       };
+//     });
 
-    // Trả về kết quả
-    res.status(200).json({ doctorList });
-  } catch (error) {
-    console.error("Error fetching doctors:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
+//     // Trả về kết quả
+//     res.status(200).json({ doctorList });
+//   } catch (error) {
+//     console.error("Error fetching doctors:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 // danh sách bác sĩ thuộc bệnh viện
-const getDoctorOfHospital = async (req, res) => {
+const getDoctorOfManager = async (req, res) => {
   try {
     const hospital = await Hospital.findOne({
       where: {
@@ -692,7 +692,7 @@ const getAllDoctorAdmin = async (req, res) => {
 };
 
 // lấy danh sách tên bác sĩ
-const getDoctorNameList = async (req, res) => {
+const getDoctorNameListOfManager = async (req, res) => {
   const manager_id = req.user.id;
   const hospital = await Hospital.findOne({
     where: {
@@ -726,7 +726,7 @@ const getDoctorNameList = async (req, res) => {
 };
 
 // lấy thông tin bác sĩ
-const getDoctorDetail = async (req, res) => {
+const getDoctorDetailById = async (req, res) => {
   const { id } = req.params;
   const doctor = await Doctor.findByPk(id, {
     include: [
@@ -821,12 +821,8 @@ const getDoctorDetail = async (req, res) => {
   res.status(200).json({ doctorDetail });
 };
 
-// lấy danh sách slot theo ngày từ bác sĩ
-
-// const getAppointmentSlotsByDoctorAndDate = async (req, res) => {};
-
 // lấy bác sĩ theo ID
-const getDoctorById = async (req, res) => {
+const getNameDoctorById = async (req, res) => {
   const { id } = req.params;
   try {
     const doctor = await Doctor.findByPk(id, {
@@ -979,12 +975,11 @@ const getAllDoctorOnline = async (req, res) => {
 
 module.exports = {
   createDoctor,
-  getDoctorOfHospital,
-  getDoctorNameList,
+  getDoctorOfManager,
+  getDoctorNameListOfManager,
   getAllDoctor,
-  getDoctorDetail,
-  filterDoctor,
-  getDoctorById,
+  getDoctorDetailById,
+  getNameDoctorById,
   getDoctorByLicenseCode,
   getAllDoctorOnline,
   getAllDoctorAdmin,

@@ -8,7 +8,7 @@ const { sendEmail } = require("../services/emailService");
 const { BOOLEAN } = require("sequelize");
 const { Op } = require("sequelize");
 
-const createAccount = async (req, res) => {
+const createManagerAccount = async (req, res) => {
   const { username, roleName } = req.body;
   try {
     const role = await Role.findOne({ where: { name: roleName } });
@@ -231,7 +231,7 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-const updateFamilyMember = async (req, res) => {
+const updateFamilyProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -274,7 +274,7 @@ const updateFamilyMember = async (req, res) => {
 };
 
 // ADMIN
-const getUsers = async (req, res) => {
+const getListUserOfAdmin = async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
 
@@ -370,7 +370,7 @@ const getUserById = async (req, res) => {
   }
 };
 
-const createUser = async (req, res) => {
+const createUserOfAdmin = async (req, res) => {
   const { ...userData } = req.body;
 
   try {
@@ -405,7 +405,7 @@ const createUser = async (req, res) => {
   }
 };
 
-const lockUser = async (req, res) => {
+const lockUserOfAdmin = async (req, res) => {
   try {
     const { isActivated, isDeleted } = req.body;
     const user = await User.findOne({ where: { id: req.params.id } });
@@ -428,7 +428,7 @@ const lockUser = async (req, res) => {
   }
 };
 
-const updateUser = async (req, res) => {
+const updateUserOfAdmin = async (req, res) => {
   const { ...userData } = req.body;
   try {
     const user = await User.findOne({
@@ -473,17 +473,17 @@ const updateUser = async (req, res) => {
   }
 };
 module.exports = {
-  createAccount,
+  createManagerAccount,
   createProfile,
   getAllProfileOfUser,
   getInfoDoctor,
   getInfoUser,
   createUserAccount,
   updateUserProfile,
-  updateFamilyMember,
-  getUsers,
+  updateFamilyProfile,
+  getListUserOfAdmin,
   getUserById,
-  createUser,
-  lockUser,
-  updateUser,
+  createUserOfAdmin,
+  lockUserOfAdmin,
+  updateUserOfAdmin,
 };

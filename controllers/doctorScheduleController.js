@@ -5,16 +5,12 @@ const {
   DoctorHospital,
   HospitalSpecialty,
   DoctorSpecialty,
-  WorkingDay,
-  Room,
 } = require("../models");
 const DoctorSchedule = require("../models/doctorScheduleModel");
 const AppointmentSlot = require("../models/appointmentSlotModel");
-const { generateDatesBetween, createSlots } = require("../utils/common");
 const moment = require("moment");
 const { Op } = require("sequelize");
 const Sequelize = require("sequelize");
-const { schedule } = require("node-cron");
 
 const createDoctorSchedule = async (req, res) => {
   const { schedules, doctorId, slotDuration } = req.body;
@@ -91,7 +87,7 @@ const createDoctorSchedule = async (req, res) => {
   }
 };
 
-const getDoctorScheduleDates = async (req, res) => {
+const getDoctorScheduleDays = async (req, res) => {
   const { doctorId } = req.params;
   const { hospitalId } = req.query;
 
@@ -131,7 +127,7 @@ const getDoctorScheduleDates = async (req, res) => {
   }
 };
 
-const getAppointmentSlotsByDoctorAndDate = async (req, res) => {
+const getAppointmentSlotsByDoctorInDay = async (req, res) => {
   const { doctorId } = req.params;
   const { hospitalId, date } = req.query;
 
@@ -197,76 +193,35 @@ const getAppointmentSlotsByDoctorAndDate = async (req, res) => {
   }
 };
 
-const getDoctorSchedule = async (req, res) => {
-  try {
-    const currentDoctor = await Doctor.findOne({
-      where: {
-        user_id: req.user.id,
-      },
-    });
-    const doctorSchedule = await DoctorSchedule.findAll({
-      where: {
-        doctor_id: currentDoctor.id,
-      },
-      include: [
-        {
-          model: AppointmentSlot,
-          as: "appointmentSlots",
-          attributes: ["id", "start_time", "end_time"],
-          include: [
-            {
-              model: Hospital,
-              as: "hospital",
-              attributes: ["id", "name"],
-            },
-          ],
-        },
-      ],
-    });
-    const grouped = doctorSchedule.reduce((acc, curr) => {
-      const date = curr.date;
-      if (!acc[date]) {
-        acc[date] = { date, shifts: [] };
-      }
-      acc[date].shifts.push(curr);
-      return acc;
-    }, {});
-    res.status(200).json(Object.values(grouped));
-  } catch (error) {
-    console.log("Error getting doctor schedule:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
+// const getDoctorScheduleAfterCurrentDate = async (req, res) => {
+//   const { hospitalId } = req.query;
+//   try {
+//     const currentDoctor = await Doctor.findOne({
+//       where: {
+//         user_id: req.user.id,
+//       },
+//     });
 
-const getDoctorScheduleAfterCurrentDate = async (req, res) => {
-  const { hospitalId } = req.query;
-  try {
-    const currentDoctor = await Doctor.findOne({
-      where: {
-        user_id: req.user.id,
-      },
-    });
+//     const currentDate = moment();
+//     const nextDaySameTime = currentDate
+//       .add(1, "days")
+//       .format("YYYY-MM-DD HH:mm");
 
-    const currentDate = moment();
-    const nextDaySameTime = currentDate
-      .add(1, "days")
-      .format("YYYY-MM-DD HH:mm");
+//     const doctorSchedule = await DoctorSchedule.findAll({
+//       where: {
+//         doctor_id: currentDoctor.id,
 
-    const doctorSchedule = await DoctorSchedule.findAll({
-      where: {
-        doctor_id: currentDoctor.id,
-
-        date: {
-          [Op.gte]: nextDaySameTime,
-        },
-      },
-    });
-    res.status(200).json(doctorSchedule);
-  } catch (error) {
-    console.log("Error getting doctor schedule after current date:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
+//         date: {
+//           [Op.gte]: nextDaySameTime,
+//         },
+//       },
+//     });
+//     res.status(200).json(doctorSchedule);
+//   } catch (error) {
+//     console.log("Error getting doctor schedule after current date:", error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 // lấy nơi làm việc của bác sĩ
 const getDoctorWorkplace = async (req, res) => {
@@ -296,7 +251,7 @@ const getDoctorWorkplace = async (req, res) => {
   }
 };
 
-const getDoctorScheduleBySpecialtyAndHospital = async (req, res) => {
+const getDoctorScheduleBySpecialtyInHospital = async (req, res) => {
   const { specialtyID, hospitalID } = req.query;
   try {
     // Bước 1: Tìm `hospital_specialty_id` theo chuyên khoa và bệnh viện
@@ -417,74 +372,7 @@ const getDoctorScheduleBySpecialtyAndHospital = async (req, res) => {
   }
 };
 
-// tạo lịch làm việc của bác sĩ
-const createDoctorSchedule2 = async (req, res) => {
-  const { schedules, doctorId, slotDuration, startDate, endDate } = req.body;
-  try {
-    const hospital = await Hospital.findOne({
-      where: {
-        manager_id: req.user.id,
-      },
-    });
-
-    const schedulePromises = [];
-    const selectedSchedules = schedules.filter((s) =>
-      moment(s.date).isBetween(startDate, endDate, null, "[]")
-    );
-
-    selectedSchedules.forEach((schedule) => {
-      const { date_of_week, time_slots, date } = schedule;
-
-      time_slots.forEach((slot) => {
-        const { shift_type, start, end, room } = slot;
-
-        const schedulePromise = DoctorSchedule.create({
-          doctor_id: doctorId,
-          hospital_id: hospital.id,
-          date: moment(date, "YYYY-MM-DD").format("YYYY-MM-DD"),
-          date_of_week,
-          start_time: start,
-          end_time: end,
-          shift_type,
-          slot_duration: slotDuration,
-          // room_id: room,
-        }).then((createdSchedule) => {
-          const startTime = moment(start, "HH:mm:ss");
-          const endTime = moment(end, "HH:mm:ss");
-          const slots = [];
-
-          while (startTime.isBefore(endTime)) {
-            const slotEnd = startTime.clone().add(slotDuration, "minutes");
-
-            if (slotEnd.isAfter(endTime)) break;
-
-            slots.push({
-              doctor_id: doctorId,
-              hospital_id: hospital.id,
-              doctorSchedule_id: createdSchedule.id,
-              start_time: startTime.format("HH:mm:ss"),
-              end_time: slotEnd.format("HH:mm:ss"),
-            });
-
-            startTime.add(slotDuration, "minutes");
-          }
-
-          return AppointmentSlot.bulkCreate(slots);
-        });
-
-        schedulePromises.push(schedulePromise);
-      });
-    });
-    await Promise.all(schedulePromises);
-
-    res.status(200).json({ message: "Tạo lịch thành công" });
-  } catch (error) {
-    console.log("Error creating doctor schedule:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const getAllDoctorSchedule = async (req, res) => {
+const getDoctorAllSchedule = async (req, res) => {
   try {
     // Thêm caching cho các truy vấn tìm kiếm doctor
     const currentDoctor = await Doctor.findOne({
@@ -618,7 +506,7 @@ const check = async (req, res) => {
   }
 };
 
-const getDoctorAllSchedules = async (req, res) => {
+const getDoctorScheduleOfManager = async (req, res) => {
   const { doctorId } = req.params;
 
   try {
@@ -664,14 +552,11 @@ const getDoctorAllSchedules = async (req, res) => {
 
 module.exports = {
   createDoctorSchedule,
-  getAppointmentSlotsByDoctorAndDate,
-  getDoctorScheduleDates,
-  getDoctorSchedule,
-  getDoctorScheduleAfterCurrentDate,
+  getAppointmentSlotsByDoctorInDay,
+  getDoctorScheduleDays,
   getDoctorWorkplace,
-  getDoctorScheduleBySpecialtyAndHospital,
-  createDoctorSchedule2,
-  getAllDoctorSchedule,
+  getDoctorScheduleBySpecialtyInHospital,
+  getDoctorAllSchedule,
   check,
-  getDoctorAllSchedules,
+  getDoctorScheduleOfManager,
 };

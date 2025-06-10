@@ -171,7 +171,7 @@ const createAppointment = async (req, res) => {
   }
 };
 
-// lấy lịch hẹn sắp tới của người dùng
+// lấy lịch hẹn của người dùng
 const getAppointmentsByUserId = async (req, res) => {
   try {
     // điều kiện lọc
@@ -776,8 +776,8 @@ const getAppointmentById = async (req, res) => {
   }
 };
 
-// lấy chi tiết lịch hẹn theo id (theo hệ thống bệnh viện khác API)
-const getAppointmentByIdByHospital = async (req, res) => {
+// lấy chi tiết lịch hẹn theo mã
+const getAppointmentByCode = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -948,7 +948,7 @@ const getAppointmentByIdByHospital = async (req, res) => {
       appointmentDetail: appointmentDetail,
     });
   } catch (error) {
-    console.error("Error in getAppointmentByIdByHospital:", error);
+    console.error("Error in getAppointmentByCode:", error);
     res.status(500).json({
       success: false,
       status: 500,
@@ -959,7 +959,7 @@ const getAppointmentByIdByHospital = async (req, res) => {
   }
 };
 
-const getAppointmentCompletedById = async (req, res) => {
+const getAppointmentCompletedByUserId = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1045,101 +1045,101 @@ const getAppointmentCompletedById = async (req, res) => {
 };
 
 // danh sách lịch hẹn của bệnh viện (dựa vào id của staff và bệnh viện)
-const getAllAppointmentsByHospitalId = async (req, res) => {
-  try {
-    const staffOfHospital = await StaffHospital.findOne({
-      where: {
-        user_id: req.user.id,
-      },
-    });
-    console.log(staffOfHospital);
-    const appointments = await Appointment.findAll({
-      where: {
-        hospital_id: staffOfHospital.hospital_id,
-      },
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: [
-            "id",
-            "fullname",
-            "phone",
-            "address",
-            "avatar",
-            "gender",
-            "date_of_birth",
-          ],
-        },
-        {
-          model: AppointmentSlot,
-          as: "appointmentSlot",
-          attributes: ["id", "start_time", "end_time"],
-        },
-        {
-          model: DoctorSchedule,
-          as: "doctorSchedule",
-          attributes: ["id", "date"],
-        },
-        {
-          model: Doctor,
-          as: "doctor",
-          include: [
-            {
-              model: User,
-              as: "user",
-            },
-          ],
-        },
-        {
-          model: Specialty,
-          as: "specialty",
-          attributes: ["id", "name"],
-        },
-      ],
-      order: [
-        ["status", "ASC"],
-        ["doctorSchedule", "date", "ASC"],
-        [
-          { model: AppointmentSlot, as: "appointmentSlot" },
-          "start_time",
-          "ASC",
-        ],
-      ],
-    });
+// const getAllAppointmentsByHospitalId = async (req, res) => {
+//   try {
+//     const staffOfHospital = await StaffHospital.findOne({
+//       where: {
+//         user_id: req.user.id,
+//       },
+//     });
+//     console.log(staffOfHospital);
+//     const appointments = await Appointment.findAll({
+//       where: {
+//         hospital_id: staffOfHospital.hospital_id,
+//       },
+//       include: [
+//         {
+//           model: User,
+//           as: "user",
+//           attributes: [
+//             "id",
+//             "fullname",
+//             "phone",
+//             "address",
+//             "avatar",
+//             "gender",
+//             "date_of_birth",
+//           ],
+//         },
+//         {
+//           model: AppointmentSlot,
+//           as: "appointmentSlot",
+//           attributes: ["id", "start_time", "end_time"],
+//         },
+//         {
+//           model: DoctorSchedule,
+//           as: "doctorSchedule",
+//           attributes: ["id", "date"],
+//         },
+//         {
+//           model: Doctor,
+//           as: "doctor",
+//           include: [
+//             {
+//               model: User,
+//               as: "user",
+//             },
+//           ],
+//         },
+//         {
+//           model: Specialty,
+//           as: "specialty",
+//           attributes: ["id", "name"],
+//         },
+//       ],
+//       order: [
+//         ["status", "ASC"],
+//         ["doctorSchedule", "date", "ASC"],
+//         [
+//           { model: AppointmentSlot, as: "appointmentSlot" },
+//           "start_time",
+//           "ASC",
+//         ],
+//       ],
+//     });
 
-    const appointmentList = appointments?.map((appointment) => {
-      return {
-        id: appointment.id,
-        status: appointment.status,
-        payment_status: appointment.payment_status,
-        payment_method: appointment.payment_method,
-        reason: appointment.reason_for_visit,
-        appointmentSlot: appointment.appointmentSlot,
-        doctorSchedule: appointment.doctorSchedule,
-        appointment_code: appointment.appointment_code,
-        doctor: {
-          id: appointment.doctor.id,
-          fullname: appointment.doctor.user.fullname,
-        },
-        hospital: appointment.hospital,
-        specialty: appointment.specialty,
-        patient: appointment.user,
-        members: appointment.user.familyMembers,
-        // appointment_date: appointment.appointment_date,
-      };
-    });
-    res.status(200).json({
-      message: "Get appointment successfully",
-      appointmentList,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      message: "Failed to get appointment",
-    });
-  }
-};
+//     const appointmentList = appointments?.map((appointment) => {
+//       return {
+//         id: appointment.id,
+//         status: appointment.status,
+//         payment_status: appointment.payment_status,
+//         payment_method: appointment.payment_method,
+//         reason: appointment.reason_for_visit,
+//         appointmentSlot: appointment.appointmentSlot,
+//         doctorSchedule: appointment.doctorSchedule,
+//         appointment_code: appointment.appointment_code,
+//         doctor: {
+//           id: appointment.doctor.id,
+//           fullname: appointment.doctor.user.fullname,
+//         },
+//         hospital: appointment.hospital,
+//         specialty: appointment.specialty,
+//         patient: appointment.user,
+//         members: appointment.user.familyMembers,
+//         // appointment_date: appointment.appointment_date,
+//       };
+//     });
+//     res.status(200).json({
+//       message: "Get appointment successfully",
+//       appointmentList,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({
+//       message: "Failed to get appointment",
+//     });
+//   }
+// };
 
 // Cập nhật trạng thái lịch hẹn sau khi thanh toán
 const updateAppointmentStatusAfterPayment = async (req, res) => {
@@ -1207,59 +1207,59 @@ const updateAppointmentStatusAfterPayment = async (req, res) => {
   }
 };
 // cập nhật trạng thái lịch hẹn
-const updateAppointmentStatusById = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
+// const updateAppointmentStatusById = async (req, res) => {
+//   const { id } = req.params;
+//   const { status } = req.body;
 
-  try {
-    const updatedAppointment = await Appointment.update(
-      { status, staff_id: req.user.id, updatedAt: new Date() },
-      { where: { id } }
-    );
-    const appointmentSlotId = await Appointment.findOne({
-      where: { id },
-      attributes: ["appointmentSlot_id"],
-    });
-    const changeSlotStatus = await AppointmentSlot.update(
-      { isBooked: false },
-      { where: { id: appointmentSlotId.appointmentSlot_id } }
-    );
-    const appointment = await Appointment.findOne({
-      where: { id },
-    });
-    const user = await User.findOne({
-      where: {
-        id: appointment.user_id,
-      },
-    });
-    const hospitalName = await Hospital.findOne({
-      where: {
-        id: appointment.hospital_id,
-      },
-    });
-    const appointmentDate = moment(appointment.appointment_date).format(
-      "DD/MM/YYYY"
-    );
+//   try {
+//     const updatedAppointment = await Appointment.update(
+//       { status, staff_id: req.user.id, updatedAt: new Date() },
+//       { where: { id } }
+//     );
+//     const appointmentSlotId = await Appointment.findOne({
+//       where: { id },
+//       attributes: ["appointmentSlot_id"],
+//     });
+//     const changeSlotStatus = await AppointmentSlot.update(
+//       { isBooked: false },
+//       { where: { id: appointmentSlotId.appointmentSlot_id } }
+//     );
+//     const appointment = await Appointment.findOne({
+//       where: { id },
+//     });
+//     const user = await User.findOne({
+//       where: {
+//         id: appointment.user_id,
+//       },
+//     });
+//     const hospitalName = await Hospital.findOne({
+//       where: {
+//         id: appointment.hospital_id,
+//       },
+//     });
+//     const appointmentDate = moment(appointment.appointment_date).format(
+//       "DD/MM/YYYY"
+//     );
 
-    if (updatedAppointment) {
-      await createAppointmentNotification(
-        user.id,
-        id,
-        hospitalName.name,
-        appointmentDate,
-        status
-      );
-    }
-    res.status(200).json({
-      message: "Update appointment status successfully",
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      message: "Failed to update appointment status",
-    });
-  }
-};
+//     if (updatedAppointment) {
+//       await createAppointmentNotification(
+//         user.id,
+//         id,
+//         hospitalName.name,
+//         appointmentDate,
+//         status
+//       );
+//     }
+//     res.status(200).json({
+//       message: "Update appointment status successfully",
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({
+//       message: "Failed to update appointment status",
+//     });
+//   }
+// };
 
 // lấy lịch hẹn gần tới
 const getAppointmentSoon = async (req, res) => {
@@ -1778,16 +1778,14 @@ const calculateReminderTimes = (appointmentDate, appointmentTime) => {
 module.exports = {
   createAppointment,
   getAppointmentsByUserId,
-  getAllAppointmentsByHospitalId,
-  updateAppointmentStatusById,
   getAppointmentById,
   getAppointmentSoon,
   getAppointmentNeedChange,
   suggestAppointment,
   changeAppointment,
-  getAppointmentCompletedById,
+  getAppointmentCompletedByUserId,
   cancelAppointment,
-  getAppointmentByIdByHospital,
+  getAppointmentByCode,
   updateAppointmentStatusAfterPayment,
   deleteFamilyMember,
   getHistoryBookingOfHospital,
