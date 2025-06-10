@@ -4,7 +4,6 @@ const {
   upload,
   createDetailedExamResult,
   getDetailedExamResultByAppointmentCode,
-  getDoctorDetailedExamResults,
   getPatientExamHistory,
 } = require("../controllers/detailedExamResultController");
 const {
@@ -30,12 +29,12 @@ router.get(
 );
 
 // Get all detailed exam results for a doctor
-router.get(
-  "/doctor/:doctorId",
-  authenticateToken,
-  requireRole(["doctor", "staff"]), // Doctors and staff can view
-  getDoctorDetailedExamResults
-);
+// router.get(
+//   "/doctor/:doctorId",
+//   authenticateToken,
+//   requireRole(["doctor", "staff"]), // Doctors and staff can view
+//   getExamResultHistoryOfDoctor
+// );
 
 // Get patient exam history
 router.post(

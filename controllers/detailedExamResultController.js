@@ -281,62 +281,62 @@ const getDetailedExamResultByAppointmentCode = async (req, res) => {
 };
 
 // Get all detailed exam results for a doctor
-const getDoctorDetailedExamResults = async (req, res) => {
-  try {
-    const { doctorId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
+// const getExamResultHistoryOfDoctor = async (req, res) => {
+//   try {
+//     const { doctorId } = req.params;
+//     const { page = 1, limit = 10, status } = req.query;
 
-    const whereCondition = {
-      doctor_id: doctorId,
-      is_deleted: false,
-    };
+//     const whereCondition = {
+//       doctor_id: doctorId,
+//       is_deleted: false,
+//     };
 
-    if (status) {
-      whereCondition.is_completed = status === "completed";
-    }
+//     if (status) {
+//       whereCondition.is_completed = status === "completed";
+//     }
 
-    const offset = (page - 1) * limit;
+//     const offset = (page - 1) * limit;
 
-    const { count, rows } = await DetailedExamResult.findAndCountAll({
-      where: whereCondition,
-      include: [
-        {
-          model: Appointment,
-          as: "appointment",
-          include: [
-            { model: User, as: "user" },
-            { model: FamilyMember, as: "familyMembers" },
-          ],
-        },
-        { model: Doctor, as: "doctor", include: [{ model: User, as: "user" }] },
-        { model: Hospital, as: "hospital" },
-      ],
-      order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-    });
+//     const { count, rows } = await DetailedExamResult.findAndCountAll({
+//       where: whereCondition,
+//       include: [
+//         {
+//           model: Appointment,
+//           as: "appointment",
+//           include: [
+//             { model: User, as: "user" },
+//             { model: FamilyMember, as: "familyMembers" },
+//           ],
+//         },
+//         { model: Doctor, as: "doctor", include: [{ model: User, as: "user" }] },
+//         { model: Hospital, as: "hospital" },
+//       ],
+//       order: [["createdAt", "DESC"]],
+//       limit: parseInt(limit),
+//       offset: parseInt(offset),
+//     });
 
-    res.status(200).json({
-      success: true,
-      data: {
-        examResults: rows,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / limit),
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error getting doctor exam results:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi server khi lấy danh sách kết quả khám bệnh",
-      error: error.message,
-    });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         examResults: rows,
+//         pagination: {
+//           currentPage: parseInt(page),
+//           totalPages: Math.ceil(count / limit),
+//           totalItems: count,
+//           itemsPerPage: parseInt(limit),
+//         },
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error getting doctor exam results:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Lỗi server khi lấy danh sách kết quả khám bệnh",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // Get patient exam history (optimized with ID-based search)
 const getPatientExamHistory = async (req, res) => {
@@ -635,6 +635,5 @@ module.exports = {
   upload,
   createDetailedExamResult,
   getDetailedExamResultByAppointmentCode,
-  getDoctorDetailedExamResults,
   getPatientExamHistory,
 };
