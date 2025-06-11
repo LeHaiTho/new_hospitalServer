@@ -48,7 +48,7 @@ const upload = multer({
 });
 
 // Create detailed exam result
-const createDetailedExamResult = async (req, res) => {
+const createExamResult = async (req, res) => {
   const transaction = await DetailedExamResult.sequelize.transaction();
 
   try {
@@ -214,7 +214,7 @@ const createDetailedExamResult = async (req, res) => {
 };
 
 // Get detailed exam result by appointment code
-const getDetailedExamResultByAppointmentCode = async (req, res) => {
+const getExamResultByAppointmentCode = async (req, res) => {
   try {
     const { appointmentCode } = req.params;
 
@@ -633,7 +633,7 @@ const getPatientExamHistory = async (req, res) => {
 
 module.exports = {
   upload,
-  createDetailedExamResult,
-  getDetailedExamResultByAppointmentCode,
+  createExamResult,
+  getExamResultByAppointmentCode,
   getPatientExamHistory,
 };

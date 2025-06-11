@@ -457,7 +457,7 @@ const getDoctorAllSchedule = async (req, res) => {
   }
 };
 
-const check = async (req, res) => {
+const checkDoctorSchedule = async (req, res) => {
   const { doctorId, shift, numberDate, dayOfDate } = req.body;
   const dayOfWeekMapping = [
     "Sunday",
@@ -557,6 +557,6 @@ module.exports = {
   getDoctorWorkplace,
   getDoctorScheduleBySpecialtyInHospital,
   getDoctorAllSchedule,
-  check,
+  checkDoctorSchedule,
   getDoctorScheduleOfManager,
 };

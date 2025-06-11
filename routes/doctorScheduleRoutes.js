@@ -6,13 +6,13 @@ const {
   getDoctorWorkplace,
   getDoctorScheduleBySpecialtyInHospital,
   getDoctorAllSchedule,
-  check,
+  checkDoctorSchedule,
   getDoctorScheduleOfManager,
 } = require("../controllers/doctorScheduleController");
 const { protect } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
-router.post("/check", protect, check);
+router.post("/check", protect, checkDoctorSchedule);
 router.post("/create-schedule", protect, createDoctorSchedule);
 router.get("/doctor/:doctorId/get-slots", getAppointmentSlotsByDoctorInDay);
 router.get("/doctor/:doctorId/get-dates", getDoctorScheduleDays);

@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const {
   upload,
-  createDetailedExamResult,
-  getDetailedExamResultByAppointmentCode,
+  createExamResult,
+  getExamResultByAppointmentCode,
   getPatientExamHistory,
 } = require("../controllers/detailedExamResultController");
 const {
@@ -17,7 +17,7 @@ router.post(
   authenticateToken,
   requireRole(["doctor"]), // Only doctors can create
   upload.array("testResultFiles", 10), // Max 10 files
-  createDetailedExamResult
+  createExamResult
 );
 
 // Get detailed exam result by appointment code
@@ -25,7 +25,7 @@ router.get(
   "/appointment/:appointmentCode",
   authenticateToken,
   requireRole(["doctor", "staff", "customer"]), // Doctors and staff can view
-  getDetailedExamResultByAppointmentCode
+  getExamResultByAppointmentCode
 );
 
 // Get all detailed exam results for a doctor

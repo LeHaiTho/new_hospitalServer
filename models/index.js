@@ -39,10 +39,6 @@ const DetailedPrescription = require("./detailedPrescriptionModel");
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
 
 Hospital.belongsTo(User, { foreignKey: "manager_id", as: "manager" });
-// HospitalSpecialty.belongsTo(Hospital, {
-//   foreignKey: "hospital_id",
-//   as: "hospital",
-// });
 
 Doctor.belongsTo(User, { foreignKey: "user_id", as: "user" });
 User.belongsTo(Doctor, { foreignKey: "user_id", as: "doctor" });
@@ -58,28 +54,10 @@ DoctorSpecialty.belongsTo(HospitalSpecialty, {
   as: "hospitalSpecialty",
 });
 
-// DoctorHospital.belongsTo(Doctor, {
-//   foreignKey: "doctor_id",
-//   as: "doctor",
-// });
-// DoctorHospital.belongsTo(Hospital, {
-//   foreignKey: "hospital_id",
-//   as: "hospital",
-// });
-
-// DoctorSpecialty.hasMany(HospitalSpecialty, {
-//   foreignKey: "hospital_specialty_id",
-//   as: "hospitalSpecialty",
-// });
-
 HospitalSpecialty.belongsTo(DoctorSpecialty, {
   foreignKey: "hospital_specialty_id",
   as: "doctorSpecialty",
 });
-// DoctorSpecialty.hasMany(HospitalSpecialty, {
-//   foreignKey: "hospital_specialty_id",
-//   as: "hospitalSpecialty",
-// });
 
 HospitalSpecialty.belongsTo(Hospital, {
   foreignKey: "hospital_id",
@@ -188,11 +166,6 @@ Appointment.belongsTo(Specialty, {
   foreignKey: "specialty_id",
   as: "specialty",
 });
-
-// DoctorSchedule.belongsTo(Appointment, {
-//   foreignKey: "appointment_id",
-//   as: "appointment",
-// });
 
 FamilyMember.belongsTo(User, { foreignKey: "user_id", as: "user" });
 User.hasMany(FamilyMember, { foreignKey: "user_id", as: "familyMembers" });
@@ -323,9 +296,6 @@ Question.belongsTo(Specialty, { foreignKey: "specialty_id", as: "specialty" });
 
 Message.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
 Message.belongsTo(User, { foreignKey: "receiver_id", as: "receiver" });
-
-// User.hasMany(Message, { foreignKey: "sender_id", as: "messages" });
-// User.hasMany(Message, { foreignKey: "receiver_id", as: "messages" });
 
 Package.hasMany(Subscription, {
   foreignKey: "package_id",
