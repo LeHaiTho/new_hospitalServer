@@ -71,7 +71,7 @@ const createAppointment = async (req, res) => {
         price: consultationFee,
         // selectedHospital?.hospitalSpecialty?.[0]?.consultation_fee ||
         // doctor.consultation_fee[0],
-        payment_status: "confirmed",
+        payment_status: "pending",
         isDoctorSpecial: isDoctorSpecial,
       });
     }
@@ -1145,11 +1145,12 @@ const getAppointmentCompletedByUserId = async (req, res) => {
 const updateAppointmentStatusAfterPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_status, status } = req.body;
-    const updatedAppointment = await Appointment.update(
-      { payment_status, status },
-      { where: { id } }
-    );
+    const { payment_status, status = "confirmed" } = req.body;
+
+    // Cập nhật trạng thái thanh toán và lịch hẹn
+    await Appointment.update({ payment_status, status }, { where: { id } });
+
+    // Lấy thông tin lịch hẹn
     const appointment = await Appointment.findOne({
       where: { id },
       include: [
@@ -1159,19 +1160,15 @@ const updateAppointmentStatusAfterPayment = async (req, res) => {
         },
       ],
     });
+
     if (appointment) {
+      // Tạo thông báo
       await createNewAppointmentNotification(
         appointment.user_id,
         appointment.id,
         appointment.hospital.name,
         moment(appointment.appointment_date).format("DD/MM/YYYY")
       );
-      // Tạo lịch nhắc nhở
-      const now = moment().tz("Asia/Bangkok").toDate();
-      const reminderTime = [
-        moment(now).add(1, "minutes").toDate(),
-        moment(now).add(3, "minutes").toDate(),
-      ];
 
       // Lấy thông tin về thời gian của lịch hẹn
       const appointmentSlotInfo = await AppointmentSlot.findOne({
@@ -1182,12 +1179,14 @@ const updateAppointmentStatusAfterPayment = async (req, res) => {
         where: { id: appointment.doctorSchedule_id },
       });
 
-      // Tính thời gian nhắc nhở dựa trên ngày và giờ hẹn
-      // const reminderTime = calculateReminderTimes(
-      //   doctorScheduleInfo.date,
-      //   appointmentSlotInfo.start_time
-      // );
+      // Tính thời gian nhắc nhở
+      const now = moment().tz("Asia/Bangkok").toDate();
+      const reminderTime = [
+        moment(now).add(1, "minutes").toDate(),
+        moment(now).add(3, "minutes").toDate(),
+      ];
 
+      // Tạo lịch nhắc nhở
       reminderTime.forEach(async (time) => {
         await ReminderAppointment.create({
           appointment_id: appointment.id,
@@ -1200,9 +1199,10 @@ const updateAppointmentStatusAfterPayment = async (req, res) => {
       message: "Update appointment status successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error updating appointment status:", error);
     res.status(500).json({
       message: "Failed to update appointment status",
+      error: error.message,
     });
   }
 };
@@ -1620,51 +1620,6 @@ const cancelAppointment = async (req, res) => {
   }
 };
 
-// xóa hồ sơ người nhà bệnh nhân
-const deleteFamilyMember = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Bước 1: Kiểm tra xem FamilyMember có tồn tại và thuộc về người dùng không
-    const familyMember = await FamilyMember.findOne({
-      where: {
-        id,
-        user_id: req.user.id,
-        isDeleted: false,
-      },
-    });
-
-    // Bước 2: Kiểm tra xem FamilyMember có lịch hẹn nào không
-    const hasAppointments = await Appointment.findOne({
-      where: {
-        familyMember_id: id,
-      },
-    });
-
-    if (hasAppointments) {
-      return res.status(409).json({
-        message: "Hồ sơ có lịch hẹn, không thể xóa",
-      });
-    }
-
-    // Bước 3: Thực hiện xóa mềm FamilyMember
-    await FamilyMember.update(
-      { isDeleted: true, updatedAt: new Date() },
-      { where: { id } }
-    );
-
-    res.status(200).json({
-      message: "Xóa hồ sơ thành công",
-    });
-  } catch (error) {
-    console.error("Error deleting FamilyMember:", error);
-    res.status(500).json({
-      message: "Lỗi khi xóa hồ sơ",
-      error: error.message,
-    });
-  }
-};
-
 // Thêm API mới để cập nhật trạng thái thanh toán
 const updatePaymentStatus = async (req, res) => {
   try {
@@ -1787,8 +1742,6 @@ module.exports = {
   cancelAppointment,
   getAppointmentByCode,
   updateAppointmentStatusAfterPayment,
-  deleteFamilyMember,
   getHistoryBookingOfHospital,
-  updatePaymentStatus,
   getAppointmentsByDoctorId,
 };

@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const { sendEmail } = require("../services/emailService");
 const { BOOLEAN } = require("sequelize");
 const { Op } = require("sequelize");
+const Appointment = require("../models/appointmentModel");
 
 const createManagerAccount = async (req, res) => {
   const { username, roleName } = req.body;
@@ -472,6 +473,52 @@ const updateUserOfAdmin = async (req, res) => {
       .json({ message: "Failed to update user", error: error.message });
   }
 };
+
+// xóa hồ sơ người nhà bệnh nhân
+const deleteFamilyMember = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Bước 1: Kiểm tra xem FamilyMember có tồn tại và thuộc về người dùng không
+    const familyMember = await FamilyMember.findOne({
+      where: {
+        id,
+        user_id: req.user.id,
+        isDeleted: false,
+      },
+    });
+
+    // Bước 2: Kiểm tra xem FamilyMember có lịch hẹn nào không
+    const hasAppointments = await Appointment.findOne({
+      where: {
+        familyMember_id: id,
+      },
+    });
+
+    if (hasAppointments) {
+      return res.status(409).json({
+        message: "Hồ sơ có lịch hẹn, không thể xóa",
+      });
+    }
+
+    // Bước 3: Thực hiện xóa mềm FamilyMember
+    await FamilyMember.update(
+      { isDeleted: true, updatedAt: new Date() },
+      { where: { id } }
+    );
+
+    res.status(200).json({
+      message: "Xóa hồ sơ thành công",
+    });
+  } catch (error) {
+    console.error("Error deleting FamilyMember:", error);
+    res.status(500).json({
+      message: "Lỗi khi xóa hồ sơ",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createManagerAccount,
   createProfile,
@@ -486,4 +533,5 @@ module.exports = {
   createUserOfAdmin,
   lockUserOfAdmin,
   updateUserOfAdmin,
+  deleteFamilyMember,
 };

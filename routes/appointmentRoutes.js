@@ -11,11 +11,12 @@ const {
   cancelAppointment,
   getAppointmentByCode,
   updateAppointmentStatusAfterPayment,
-  deleteFamilyMember,
   getHistoryBookingOfHospital,
   updatePaymentStatus,
   getAppointmentsByDoctorId,
 } = require("../controllers/apppointmentController");
+
+const { deleteFamilyMember } = require("../controllers/userController");
 
 const {
   protect,
@@ -25,10 +26,7 @@ const {
 const router = express.Router();
 
 router.post("/create-appointment", protect, createAppointment);
-router.get(
-  "/get-appointment-by-id-by-hospital/:id",
-  getAppointmentByCode
-);
+router.get("/get-appointment-by-id-by-hospital/:id", getAppointmentByCode);
 router.get("/get-appointment-by-user-id", protect, getAppointmentsByUserId);
 router.get(
   "/get-appointments-by-doctor/:doctorId?",
@@ -71,6 +69,5 @@ router.patch(
   protect,
   updateAppointmentStatusAfterPayment
 );
-router.delete("/:id", protect, deleteFamilyMember);
-router.patch("/update-payment-status/:id", protect, updatePaymentStatus);
+
 module.exports = router;
