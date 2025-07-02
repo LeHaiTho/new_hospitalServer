@@ -1721,12 +1721,6 @@ const calculateReminderTimes = (appointmentDate, appointmentTime) => {
     return [oneDayBefore.toDate(), oneHourBefore.toDate()];
   } catch (error) {
     console.error("Error calculating reminder times:", error);
-    // Fallback to simple reminders if there's an error
-    const now = moment().tz("Asia/Bangkok");
-    return [
-      now.clone().add(1, "day").toDate(),
-      now.clone().add(2, "days").toDate(),
-    ];
   }
 };
 

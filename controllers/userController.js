@@ -33,7 +33,7 @@ const createManagerAccount = async (req, res) => {
     <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
       <h2 style="text-align: center; color: #007bff;">Chào mừng đến với hệ thống quản lý đặt lịch khám online</h2>
       <p style="color: #000000;">Xin chào,</p>
-      <p style="color: #000000;">Chúng tôi rất vui khi bạn trở thành một phần của hệ thống đặt lịch khám bệnh viện trực tuyến.</p>
+      <p style="color: #000000;">Chúng tôi rất vui khi bạn trở thành một phần của hệ thống đặt lịch khám bệnh trực tuyến.</p>
       <p style="color: #000000;">Tài khoản của bạn đã được tạo và dưới đây là thông tin đăng nhập:</p>
       <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0; color: #333;">
         <p style="color: #000000;"><strong>Tài khoản:</strong> ${username}</p>
@@ -429,50 +429,29 @@ const lockUserOfAdmin = async (req, res) => {
   }
 };
 
-const updateUserOfAdmin = async (req, res) => {
-  const { ...userData } = req.body;
-  try {
-    const user = await User.findOne({
-      where: { id: req.params.id },
-    });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    await user.update({
-      fullname: userData.fullname,
-      email: userData.email,
-      phone: userData.phone,
-      address: userData.address,
-    });
-    res.status(200).json({ message: "User updated successfully", data: user });
-
-    // const userResponse = {
-    //   id: user.id,
-    //   fullname: userData.fullname,
-    //   // username: user.username,
-    //   email: userData.email,
-    //   phone: userData.phone,
-    // role: role?.name || "N/A",
-    // address: user.address,
-    // gender: user.gender,
-    // date_of_birth: user.date_of_birth,
-    // province: user.province,
-    // district: user.district,
-    // ward: user.ward,
-    // isActivated: user.isActivated,
-    // isDeleted: user.isDeleted,
-    // createdAt: user.createdAt,
-
-    // res
-    //   .status(200)
-    //   .json({ message: "User updated successfully", data: userResponse });
-  } catch (error) {
-    console.error("Error updating user:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to update user", error: error.message });
-  }
-};
+// const updateUserOfAdmin = async (req, res) => {
+//   const { ...userData } = req.body;
+//   try {
+//     const user = await User.findOne({
+//       where: { id: req.params.id },
+//     });
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+//     await user.update({
+//       fullname: userData.fullname,
+//       email: userData.email,
+//       phone: userData.phone,
+//       address: userData.address,
+//     });
+//     res.status(200).json({ message: "User updated successfully", data: user });
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to update user", error: error.message });
+//   }
+// };
 
 // xóa hồ sơ người nhà bệnh nhân
 const deleteFamilyMember = async (req, res) => {
@@ -532,6 +511,5 @@ module.exports = {
   getUserById,
   createUserOfAdmin,
   lockUserOfAdmin,
-  updateUserOfAdmin,
   deleteFamilyMember,
 };

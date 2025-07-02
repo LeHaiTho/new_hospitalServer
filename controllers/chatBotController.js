@@ -348,7 +348,7 @@ const chat = async (req, res) => {
             ", "
           )}, tôi nghĩ bạn nên tham khảo ý kiến bác sĩ chuyên khoa ${
             matchedSpecialty.name
-          }. Tôi đã tìm được một bệnh viện phù hợp có thể giúp bạn.`,
+          }. Tôi đã tìm được một cơ sở y tế phù hợp có thể giúp bạn.`,
           hospitals: hospitalWithSpecialty,
         };
 

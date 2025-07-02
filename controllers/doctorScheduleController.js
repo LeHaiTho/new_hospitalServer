@@ -266,7 +266,7 @@ const getDoctorScheduleBySpecialtyInHospital = async (req, res) => {
     if (!hospitalSpecialty) {
       return res
         .status(404)
-        .json({ message: "Không tìm thấy chuyên khoa tại bệnh viện này." });
+        .json({ message: "Không tìm thấy chuyên khoa tại cơ sở này." });
     }
 
     // Bước 2: Lấy danh sách bác sĩ thuộc chuyên khoa tại bệnh viện này
@@ -317,7 +317,7 @@ const getDoctorScheduleBySpecialtyInHospital = async (req, res) => {
     if (availableSchedules.length === 0) {
       return res.status(404).json({
         message:
-          "Không có lịch khám trống cho chuyên khoa này tại bệnh viện này.",
+          "Không có lịch khám trống cho chuyên khoa này tại cơ sở này.",
       });
     }
 

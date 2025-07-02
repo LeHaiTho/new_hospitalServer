@@ -12,7 +12,6 @@ const {
   getUserById,
   createUserOfAdmin,
   lockUserOfAdmin,
-  updateUserOfAdmin,
   deleteFamilyMember,
 } = require("../controllers/userController.js");
 const { protect, restrictTo } = require("../middlewares/authMiddleware.js");
@@ -34,10 +33,10 @@ router.patch("/update-family-member/:id", protect, updateFamilyProfile);
 router.get("/get-users", protect, restrictTo("admin"), getListUserOfAdmin);
 router.get("/get-user-by-id/:id", protect, restrictTo("admin"), getUserById);
 router.post("/create-user", protect, restrictTo("admin"), createUserOfAdmin);
-router.patch(
-  "/update-user/:id",
-  protect,
-  restrictTo("admin"),
-  updateUserOfAdmin
-);
+// router.patch(
+//   "/update-user/:id",
+//   protect,
+//   restrictTo("admin"),
+//   updateUserOfAdmin
+// );
 module.exports = router;

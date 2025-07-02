@@ -45,7 +45,7 @@ const createHospital = async (req, res) => {
         message:
           existingHospital.email === email
             ? "Email đã được sử dụng"
-            : "Tên bệnh viện đã được sử dụng",
+            : "Tên cơ sở y tế đã được sử dụng",
       });
     }
 
@@ -88,7 +88,7 @@ const createHospital = async (req, res) => {
         <h2 style="text-align: center; color: #007bff;">Chào mừng đến với hệ thống quản lý đặt lịch khám online</h2>
         <p style="color: #000000;">Xin chào,</p> <!-- Màu chữ là đen -->
         <p style="color: #000000;">Hệ thống quản lý đặt lịch khám online rất vui khi được cộng tác cùng bạn.</p>
-        <p style="color: #000000;">Dưới đây là tài khoản và mật khẩu của bạn để có thể quản lý bệnh viện hoạt động trên hệ thống:</p>
+        <p style="color: #000000;">Dưới đây là tài khoản và mật khẩu của bạn để có thể quản lý cơ sở y tế hoạt động trên hệ thống:</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0; color: #333;">
           <p style="color: #000000;"><strong>Tài khoản:</strong> ${newHospital.email}</p>
           <p style="color: #000000;"><strong>Mật khẩu:</strong> ${generatedPassword}</p>
@@ -264,7 +264,7 @@ const updateHospital = async (req, res) => {
     await hospital.save();
     res
       .status(200)
-      .json({ message: "Cập nhật thông tin bệnh viện thành công!", hospital });
+      .json({ message: "Cập nhật thông tin cơ sở y tế thành công!", hospital });
   } catch (error) {
     console.log(error);
     res
@@ -517,7 +517,7 @@ const disableHospital = async (req, res) => {
 
     const hospital = await Hospital.findByPk(id);
     if (!hospital) {
-      return res.status(404).json({ message: "Không tìm thấy bệnh viện" });
+      return res.status(404).json({ message: "Không tìm thấy cơ sở y tế" });
     }
 
     hospital.isActive = isActive;
@@ -551,7 +551,7 @@ const disableHospital = async (req, res) => {
     }
 
     res.status(200).json({
-      message: `Bệnh viện đã được ${isActive ? "kích hoạt" : "vô hiệu hóa"}`,
+      message: `Cơ sở y tế đã được ${isActive ? "kích hoạt" : "vô hiệu hóa"}`,
     });
   } catch (error) {
     res.status(500).json({
